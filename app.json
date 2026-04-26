@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DZDPRatingGenrator",
+    "name": "大众点评评价生成器",
     "slug": "DZDPRatingGenrator",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,10 +20,16 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.xhawk.DZDPRatingGenrator"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "992854cf-aa0e-4db5-a225-b73b3d63b776"
+      }
     }
   }
 }

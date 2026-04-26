@@ -4,12 +4,13 @@ import {
   Image, ActivityIndicator, Alert, Modal, FlatList 
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
-import { searchAround, searchText } from '../services/amapService';
+import { searchAround, getTips } from '../services/amapService';
 import { generateReview } from '../services/llmService';
 
 export default function HomeScreen({ navigation }) {
@@ -30,6 +31,7 @@ export default function HomeScreen({ navigation }) {
   // 状态：生成结果
   const [generating, setGenerating] = useState(false);
   const [resultText, setResultText] = useState('');
+  const [globalError, setGlobalError] = useState(''); // 新增：跨域等网络报错的界面展示
 
   // 初始化获取位置并搜索周边
   useEffect(() => {
@@ -58,9 +60,26 @@ export default function HomeScreen({ navigation }) {
     });
 
     if (!result.canceled) {
-      const newImages = result.assets.map(asset => ({
-        uri: asset.uri,
-        base64: `data:image/jpeg;base64,${asset.base64}`
+      // 在此处进行深度压缩，防止导致 413 Payload Too Large
+      const newImages = await Promise.all(result.assets.map(async (asset) => {
+        try {
+          const manipResult = await ImageManipulator.manipulateAsync(
+            asset.uri,
+            [{ resize: { width: 800 } }], // 锁定最大宽度 800px，高度等比缩放
+            { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+          );
+          return {
+            uri: manipResult.uri,
+            base64: `data:image/jpeg;base64,${manipResult.base64}`
+          };
+        } catch (error) {
+          console.error("图片压缩失败", error);
+          // 如果压缩失败，回退到原始压缩方案（风险：依然可能413）
+          return {
+            uri: asset.uri,
+            base64: `data:image/jpeg;base64,${asset.base64}`
+          };
+        }
       }));
       setImages(prev => [...prev, ...newImages].slice(0, 9));
     }
@@ -79,20 +98,32 @@ export default function HomeScreen({ navigation }) {
       setPoiList(pois);
     } catch (e) {
       console.error(e);
-      Alert.alert('错误', '无法获取周边商铺，请尝试手动搜索');
+      Alert.alert('获取定位或周边商铺失败', e.message || '无法获取周边商铺，请尝试手动搜索');
     } finally {
       setSearchingPoi(false);
     }
   };
 
-  const searchStoreByText = async () => {
-    if (!storeSearchQuery) return;
+  const handleFuzzySearch = async (text) => {
+    setStoreSearchQuery(text);
+    if (!text) {
+      if (poiList.length === 0) loadNearbyStores();
+      return;
+    }
     setSearchingPoi(true);
     try {
-      const pois = await searchText(storeSearchQuery);
-      setPoiList(pois);
+      let location = null;
+      try {
+        location = await Location.getCurrentPositionAsync({});
+      } catch(e) {}
+      
+      const lon = location ? location.coords.longitude : null;
+      const lat = location ? location.coords.latitude : null;
+      
+      const tips = await getTips(text, lon, lat);
+      setPoiList(tips);
     } catch (e) {
-      Alert.alert('错误', '搜索失败');
+      setGlobalError('搜索联想失败: ' + (e.message || '未知错误'));
     } finally {
       setSearchingPoi(false);
     }
@@ -114,6 +145,7 @@ export default function HomeScreen({ navigation }) {
 
     setGenerating(true);
     setResultText('');
+    setGlobalError('');
 
     try {
       const savedBaseUrl = await AsyncStorage.getItem('@baseUrl');
@@ -121,7 +153,7 @@ export default function HomeScreen({ navigation }) {
       const savedModel = await AsyncStorage.getItem('@model');
 
       if (!savedApiKey) {
-        Alert.alert('提示', '请先在右上角设置中配置大模型 API Key');
+        setGlobalError('请先在右上角设置中配置大模型 API Key');
         setGenerating(false);
         return;
       }
@@ -142,7 +174,7 @@ export default function HomeScreen({ navigation }) {
       const result = await generateReview(params, config);
       setResultText(result);
     } catch (e) {
-      Alert.alert('生成失败', e.message);
+      setGlobalError('生成失败: ' + e.message + '\n(如果您在电脑网页预览遇到此错误，通常是因为浏览器跨域限制，请使用安卓手机安装 APK 测试)');
     } finally {
       setGenerating(false);
     }
@@ -224,6 +256,13 @@ export default function HomeScreen({ navigation }) {
         />
       </View>
 
+      {/* 界面错误提示 */}
+      {globalError ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{globalError}</Text>
+        </View>
+      ) : null}
+
       {/* 生成按钮 */}
       <TouchableOpacity 
         style={[styles.generateBtn, generating && styles.generateBtnDisabled]} 
@@ -267,14 +306,11 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.searchRow}>
               <TextInput 
                 style={styles.searchInput}
-                placeholder="搜索附近商铺..."
+                placeholder="搜索附近商铺 (支持模糊联想)..."
                 placeholderTextColor={theme.colors.textSecondary}
                 value={storeSearchQuery}
-                onChangeText={setStoreSearchQuery}
+                onChangeText={handleFuzzySearch}
               />
-              <TouchableOpacity style={styles.searchBtn} onPress={searchStoreByText}>
-                <Ionicons name="search" size={20} color="#000" />
-              </TouchableOpacity>
             </View>
 
             {searchingPoi ? (
@@ -432,6 +468,18 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: 'bold',
     marginLeft: theme.spacing.sm,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    borderColor: theme.colors.error,
+    borderWidth: 1,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,

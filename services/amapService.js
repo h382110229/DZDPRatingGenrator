@@ -60,3 +60,39 @@ export const searchText = async (keywords, city = '') => {
   }
   return fetchAmap('text', params);
 };
+
+/**
+ * 模糊搜索联想输入提示
+ * @param {string} keywords 
+ * @param {number} longitude (Optional)
+ * @param {number} latitude (Optional)
+ * @returns Array of POIs
+ */
+export const getTips = async (keywords, longitude, latitude) => {
+  const params = {
+    keywords,
+    datatype: 'poi' // 只返回POI类型，不返回公交站等
+  };
+  if (longitude && latitude) {
+    params.location = `${longitude},${latitude}`;
+  }
+  // 注意：输入提示的 endpoint 是 ../assistant/inputtips 而不是 ../place/
+  const query = new URLSearchParams({
+    key: AMAP_WEB_KEY,
+    ...params,
+  }).toString();
+
+  const url = `https://restapi.amap.com/v3/assistant/inputtips?${query}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.status === '1') {
+      return data.tips || [];
+    }
+    throw new Error(data.info || '高德API请求失败');
+  } catch (error) {
+    console.error('Amap API Error:', error);
+    throw error;
+  }
+};
+
