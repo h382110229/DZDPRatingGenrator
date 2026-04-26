@@ -1,0 +1,92 @@
+/**
+ * 调用大语言模型 API 生成点评
+ * 兼容 OpenAI 的 Chat Completions API 格式
+ * 
+ * @param {Object} params
+ * @param {string} params.storeName 店铺名称
+ * @param {string} params.userReview 用户的简单评价（可能为空）
+ * @param {string} params.wordCount 字数要求
+ * @param {Array<string>} params.images base64 格式的图片数组（带 data:image/jpeg;base64, 前缀）
+ * @param {Object} config API配置
+ * @param {string} config.baseUrl API的Base URL
+ * @param {string} config.apiKey API Key
+ * @param {string} config.model 模型名称
+ */
+export const generateReview = async (params, config) => {
+  const { storeName, userReview, wordCount, images } = params;
+  const { baseUrl, apiKey, model } = config;
+
+  if (!apiKey) {
+    throw new Error('请先在设置中配置 API Key');
+  }
+
+  // 构造用户 Prompt
+  let promptText = `你是一个资深的大众点评V8用户，非常擅长写高质量、吸引人的真实探店评价。\n`;
+  promptText += `现在我要为【${storeName || '这家店'}】写一条点评。\n`;
+  
+  if (userReview) {
+    promptText += `我的简单感受是：${userReview}\n`;
+  } else {
+    promptText += `我没有提供具体感受，请你根据常理或提供的图片（如果有）自由发挥，写一段积极正向的评价。\n`;
+  }
+  
+  promptText += `字数要求：大约 ${wordCount || '200-300'} 字左右。\n`;
+  promptText += `要求：\n1. 语气真实自然，不要太像AI生成的，像一个真实的食客或顾客。\n2. 结构清晰，可以包含环境、服务、口味/体验等维度。\n3. 直接输出点评正文，不需要任何多余的开头或结尾问候语。`;
+
+  // 构造 OpenAI 格式的消息体
+  const messageContent = [
+    { type: 'text', text: promptText }
+  ];
+
+  // 如果有图片，加入多模态参数
+  if (images && images.length > 0) {
+    images.forEach(base64Image => {
+      messageContent.push({
+        type: 'image_url',
+        image_url: {
+          url: base64Image
+        }
+      });
+    });
+  }
+
+  const requestBody = {
+    model: model || 'LongCat-Flash-Chat',
+    messages: [
+      {
+        role: 'user',
+        content: messageContent
+      }
+    ],
+    temperature: 0.7,
+  };
+
+  const endpoint = baseUrl.endsWith('/') ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || `请求失败: ${response.status}`);
+    }
+
+    if (data.choices && data.choices.length > 0) {
+      return data.choices[0].message.content;
+    } else {
+      throw new Error('API 返回格式异常：找不到 choices');
+    }
+
+  } catch (error) {
+    console.error('LLM API Error:', error);
+    throw error;
+  }
+};
