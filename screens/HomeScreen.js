@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, 
   Image, ActivityIndicator, Alert, Modal, FlatList 
@@ -23,6 +23,8 @@ export default function HomeScreen({ navigation }) {
   const [storeSearchQuery, setStoreSearchQuery] = useState('');
   const [poiList, setPoiList] = useState([]);
   const [searchingPoi, setSearchingPoi] = useState(false);
+  const [cachedLocation, setCachedLocation] = useState(null);
+  const searchTimeoutRef = useRef(null);
 
   // 状态：评价
   const [userReview, setUserReview] = useState('');
@@ -30,16 +32,38 @@ export default function HomeScreen({ navigation }) {
 
   // 状态：生成结果
   const [generating, setGenerating] = useState(false);
-  const [resultText, setResultText] = useState('');
+  const [reviewHistory, setReviewHistory] = useState([]); // 替代 resultText
   const [globalError, setGlobalError] = useState(''); // 新增：跨域等网络报错的界面展示
 
-  // 初始化获取位置并搜索周边
+  // ========== 快速获取位置（优先缓存，降级GPS）==========
+  const getFastLocation = async () => {
+    // 1. 优先使用上次已知位置（毫秒级）
+    try {
+      const last = await Location.getLastKnownPositionAsync({});
+      if (last) return last;
+    } catch (_) {}
+    // 2. 降级：带超时的 GPS 请求
+    return await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('定位超时')), 8000)
+      ),
+    ]);
+  };
+
+  // 初始化获取位置
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('提示', '未能获取定位权限，您可以手动搜索商铺。');
         return;
+      }
+      try {
+        const location = await getFastLocation();
+        setCachedLocation(location);
+      } catch (e) {
+        console.log('预获取定位失败（不影响手动搜索）', e);
       }
     })();
   }, []);
@@ -93,40 +117,48 @@ export default function HomeScreen({ navigation }) {
   const loadNearbyStores = async () => {
     setSearchingPoi(true);
     try {
-      let location = await Location.getCurrentPositionAsync({});
+      let location = cachedLocation;
+      if (!location) {
+        location = await getFastLocation();
+        setCachedLocation(location);
+      }
       const pois = await searchAround(location.coords.longitude, location.coords.latitude);
       setPoiList(pois);
     } catch (e) {
-      console.error(e);
-      Alert.alert('获取定位或周边商铺失败', e.message || '无法获取周边商铺，请尝试手动搜索');
+      console.error('获取周边商铺失败:', e);
+      // 定位失败时静默处理，用户可直接在搜索框手动搜索
+      setPoiList([]);
     } finally {
       setSearchingPoi(false);
     }
   };
 
-  const handleFuzzySearch = async (text) => {
+  const handleFuzzySearch = (text) => {
     setStoreSearchQuery(text);
-    if (!text) {
-      if (poiList.length === 0) loadNearbyStores();
-      return;
+    
+    // 清除上一次的定时器（防抖）
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
-    setSearchingPoi(true);
-    try {
-      let location = null;
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      if (!text) {
+        if (poiList.length === 0) loadNearbyStores();
+        return;
+      }
+      setSearchingPoi(true);
       try {
-        location = await Location.getCurrentPositionAsync({});
-      } catch(e) {}
-      
-      const lon = location ? location.coords.longitude : null;
-      const lat = location ? location.coords.latitude : null;
-      
-      const tips = await getTips(text, lon, lat);
-      setPoiList(tips);
-    } catch (e) {
-      setGlobalError('搜索联想失败: ' + (e.message || '未知错误'));
-    } finally {
-      setSearchingPoi(false);
-    }
+        const lon = cachedLocation ? cachedLocation.coords.longitude : null;
+        const lat = cachedLocation ? cachedLocation.coords.latitude : null;
+        
+        const tips = await getTips(text, lon, lat);
+        setPoiList(tips);
+      } catch (e) {
+        setGlobalError('搜索联想失败: ' + (e.message || '未知错误'));
+      } finally {
+        setSearchingPoi(false);
+      }
+    }, 400); // 400ms 防抖延迟
   };
 
   const openStoreModal = () => {
@@ -144,7 +176,6 @@ export default function HomeScreen({ navigation }) {
     }
 
     setGenerating(true);
-    setResultText('');
     setGlobalError('');
 
     try {
@@ -172,7 +203,15 @@ export default function HomeScreen({ navigation }) {
       };
 
       const result = await generateReview(params, config);
-      setResultText(result);
+      
+      // 追加到历史记录的最前面
+      setReviewHistory(prev => [{
+        id: Date.now().toString(),
+        text: result,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        store: selectedStore?.name || '未知商铺'
+      }, ...prev]);
+
     } catch (e) {
       setGlobalError('生成失败: ' + e.message + '\n(如果您在电脑网页预览遇到此错误，通常是因为浏览器跨域限制，请使用安卓手机安装 APK 测试)');
     } finally {
@@ -180,9 +219,15 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const copyToClipboard = async () => {
-    await Clipboard.setStringAsync(resultText);
+  const copyToClipboard = async (text) => {
+    await Clipboard.setStringAsync(text);
     Alert.alert('成功', '点评已复制到剪贴板！');
+  };
+
+  const handleResetInputs = () => {
+    setImages([]);
+    setSelectedStore(null);
+    setUserReview('');
   };
 
   // 配置右上角设置按钮
@@ -199,6 +244,15 @@ export default function HomeScreen({ navigation }) {
   return (
     <ScrollView style={styles.container}>
       
+      {/* 顶部控制栏 */}
+      <View style={styles.topBar}>
+        <Text style={styles.screenTitle}>准备新点评</Text>
+        <TouchableOpacity style={styles.resetBtn} onPress={handleResetInputs}>
+          <Ionicons name="refresh-outline" size={16} color={theme.colors.error} />
+          <Text style={styles.resetBtnText}>一键清空</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* 1. 照片上传区 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>上传图片 (最高9张)</Text>
@@ -276,19 +330,24 @@ export default function HomeScreen({ navigation }) {
         )}
       </TouchableOpacity>
 
-      {/* 结果展示 */}
-      {resultText ? (
+      {/* 结果展示 (多卡片流) */}
+      {reviewHistory.length > 0 && (
         <View style={styles.resultSection}>
-          <Text style={styles.sectionTitle}>生成结果</Text>
-          <View style={styles.resultBox}>
-            <Text style={styles.resultText}>{resultText}</Text>
-          </View>
-          <TouchableOpacity style={styles.copyBtn} onPress={copyToClipboard}>
-            <Ionicons name="copy-outline" size={20} color="#000" />
-            <Text style={styles.copyBtnText}>复制到剪贴板</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>生成记录</Text>
+          {reviewHistory.map((item) => (
+            <View key={item.id} style={styles.resultCard}>
+              <View style={styles.resultCardHeader}>
+                <Text style={styles.resultTime}>{item.timestamp} · {item.store}</Text>
+              </View>
+              <Text style={styles.resultText}>{item.text}</Text>
+              <TouchableOpacity style={styles.copyBtn} onPress={() => copyToClipboard(item.text)}>
+                <Ionicons name="copy-outline" size={18} color="#000" />
+                <Text style={styles.copyBtnText}>复制内容</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
-      ) : null}
+      )}
 
       <View style={{ height: 40 }} />
 
@@ -342,6 +401,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: theme.spacing.md,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  resetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 82, 82, 0.3)',
+  },
+  resetBtnText: {
+    color: theme.colors.error,
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   section: {
     marginBottom: theme.spacing.lg,
@@ -443,16 +529,35 @@ const styles = StyleSheet.create({
   resultSection: {
     marginBottom: theme.spacing.xl,
   },
-  resultBox: {
+  resultCard: {
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    marginBottom: theme.spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  resultCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.background,
+  },
+  resultTime: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontWeight: 'bold',
   },
   resultText: {
     color: theme.colors.text,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 24,
   },
   copyBtn: {
