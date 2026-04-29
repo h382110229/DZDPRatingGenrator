@@ -26,19 +26,19 @@ const b64_decode = (str) => {
 };
 
 // 混淆后的 Worker 地址: https://hawk-ai-proxy.hawkren.online/v1
-// 原字符串反转后 Base64: NXYvZW5pbG5vLm5lcmtrd2FoLnl4b3JwLWlhLWt3YWgvLzpzcHR0aA==
-const _p = 'NXYvZW5pbG5vLm5lcmtrd2FoLnl4b3JwLWlhLWt3YWgvLzpzcHR0aA==';
+// 原字符串反转后 Base64: MXYvZW5pbG5vLm5lcmtrd2FoLnl4b3JwLWlhLWt3YWgvLzpzcHR0aA==
+const _p = 'MXYvZW5pbG5vLm5lcmtrd2FoLnl4b3JwLWlhLWt3YWgvLzpzcHR0aA==';
 
 // 混淆后的 Token: hawk_2026_xYz9kQ3mNpR7
-// 原字符串反转后 Base64: N1JwT m0zUWRrOXpYeF82MjAyX2t3YWg= (注意中间空格)
 const _t = 'N1JwTm0zUWRrOXpYeF82MjAyX2t3YWg=';
 
 export const getBuiltinConfig = () => {
   const decode = (s) => b64_decode(s).split('').reverse().join('');
   return {
     baseUrl: decode(_p),
-    apiKey: decode(_t), // 这里实际上是 APP_TOKEN，但在 llmService 中统一当做 apiKey 传入
+    apiKey: decode(_t),
     model: 'gemma-4-31b-it',
+    models: ['gemma-4-31b-it'], // 补全此项，防止 map 崩溃
     isBuiltin: true
   };
 };

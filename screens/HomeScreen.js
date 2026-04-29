@@ -488,7 +488,7 @@ export default function HomeScreen({ navigation }) {
               renderItem={({ item }) => (
                 <View style={styles.modelPickerProvider}>
                   <Text style={styles.modelPickerProviderName}>{item.emoji} {item.name}</Text>
-                  {item.models.map(m => {
+                  {item.models && item.models.map(m => {
                     const isSelected = activeConfig.providerId === item.id && activeConfig.model === m;
                     return (
                       <TouchableOpacity 
