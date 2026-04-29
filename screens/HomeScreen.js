@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   Image, ActivityIndicator, Alert, Modal, FlatList
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
@@ -45,6 +44,7 @@ export default function HomeScreen({ navigation }) {
 
   // 状态：风格 & 评价
   const [selectedStyleIndex, setSelectedStyleIndex] = useState(0);
+  const [styleModalVisible, setStyleModalVisible] = useState(false);
   const [userReview, setUserReview] = useState('');
   const [wordCount, setWordCount] = useState('200');
 
@@ -312,26 +312,15 @@ export default function HomeScreen({ navigation }) {
       {/* 3. 点评风格 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>点评风格</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={selectedStyleIndex}
-            onValueChange={(val) => {
-              setSelectedStyleIndex(val);
-              if (val === 0) {
-                const r = Math.floor(Math.random() * (REVIEW_STYLES.length - 1)) + 1;
-                setWordCount(String(REVIEW_STYLES[r].wordCount));
-              } else {
-                setWordCount(String(REVIEW_STYLES[val].wordCount));
-              }
-            }}
-            style={styles.picker}
-            dropdownIconColor={theme.colors.primary}
-          >
-            {REVIEW_STYLES.map((s, i) => (
-              <Picker.Item key={i} label={s.name} value={i} color={theme.colors.text} />
-            ))}
-          </Picker>
-        </View>
+        <TouchableOpacity
+          style={styles.styleSelector}
+          onPress={() => setStyleModalVisible(true)}
+        >
+          <Text style={styles.styleSelectorText}>
+            {REVIEW_STYLES[selectedStyleIndex].name}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* 3. 个人评价 */}
@@ -406,6 +395,50 @@ export default function HomeScreen({ navigation }) {
 
       <View style={{ height: 40 }} />
 
+      {/* 风格选择 Modal */}
+      <Modal visible={styleModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>选择点评风格</Text>
+              <TouchableOpacity onPress={() => setStyleModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={REVIEW_STYLES}
+              keyExtractor={(_, i) => String(i)}
+              renderItem={({ item, index }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.styleItem,
+                    index === selectedStyleIndex && styles.styleItemActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedStyleIndex(index);
+                    if (index === 0) {
+                      const r = Math.floor(Math.random() * (REVIEW_STYLES.length - 1)) + 1;
+                      setWordCount(String(REVIEW_STYLES[r].wordCount));
+                    } else {
+                      setWordCount(String(item.wordCount));
+                    }
+                    setStyleModalVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.styleItemText,
+                    index === selectedStyleIndex && styles.styleItemTextActive,
+                  ]}>{item.name}</Text>
+                  {index === selectedStyleIndex && (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* 商铺选择 Modal */}
       <Modal visible={storeModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
@@ -463,16 +496,40 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  pickerWrapper: {
+  styleSelector: {
+    flexDirection: 'row',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
-    overflow: 'hidden',
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  picker: {
+  styleSelectorText: {
     color: theme.colors.text,
-    backgroundColor: theme.colors.surface,
+    fontSize: 16,
+    flex: 1,
+  },
+  styleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  styleItemActive: {
+    backgroundColor: 'rgba(255, 179, 0, 0.1)',
+  },
+  styleItemText: {
+    color: theme.colors.text,
+    fontSize: 16,
+    flex: 1,
+  },
+  styleItemTextActive: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
   },
   section: {
     marginBottom: theme.spacing.lg,
