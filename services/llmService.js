@@ -74,6 +74,17 @@ export const generateReview = async (params, config) => {
     temperature: 0.85, // 稍微提高创意度
   };
 
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  // 如果是 Hawk 内置 Worker，使用特殊的 X-Hawk-Token
+  if (baseUrl.includes('hawk-ai-proxy')) {
+    headers['X-Hawk-Token'] = apiKey;
+  } else {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
   const endpoint = baseUrl.endsWith('/')
     ? `${baseUrl}chat/completions`
     : `${baseUrl}/chat/completions`;
@@ -81,16 +92,17 @@ export const generateReview = async (params, config) => {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: headers,
       body: JSON.stringify(requestBody)
     });
 
     const data = await response.json();
 
     if (!response.ok) {
+      // 透传内置 Worker 的限速报错
+      if (data.hawk_error) {
+        throw new Error(JSON.stringify(data));
+      }
       throw new Error(data.error?.message || `请求失败: ${response.status}`);
     }
 

@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import HomeScreen from './screens/HomeScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import ProviderDetailScreen from './screens/ProviderDetailScreen';
 import { theme } from './constants/theme';
 
 const Stack = createStackNavigator();
@@ -37,7 +38,12 @@ export default function App() {
           <Stack.Screen 
             name="Settings" 
             component={SettingsScreen} 
-            options={{ title: '大模型设置' }}
+            options={{ title: '模型服务商' }}
+          />
+          <Stack.Screen 
+            name="ProviderDetail" 
+            component={ProviderDetailScreen} 
+            options={{ title: '配置详情' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

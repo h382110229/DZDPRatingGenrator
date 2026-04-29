@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { searchAround, getTips } from '../services/amapService';
 import { generateReview } from '../services/llmService';
+import { getBuiltinConfig } from '../constants/defaults';
+import { PROVIDER_PRESETS } from '../constants/providerPresets';
 
 // ========== 点评风格列表 ==========
 const REVIEW_STYLES = [
@@ -53,6 +55,51 @@ export default function HomeScreen({ navigation }) {
   const [reviewHistory, setReviewHistory] = useState([]); // 替代 resultText
   const [globalError, setGlobalError] = useState(''); // 新增：跨域等网络报错的界面展示
 
+  // ========== 新增：模型配置状态 ==========
+  const [activeConfig, setActiveConfig] = useState({ providerId: 'hawk-builtin', model: 'gemma-4-31b-it' });
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [availableConfigs, setAvailableConfigs] = useState([]);
+
+  // 获取完整的 LLM 配置对象（供生成使用）
+  const getLLMConfig = async () => {
+    try {
+      if (activeConfig.providerId === 'hawk-builtin') {
+        return getBuiltinConfig();
+      }
+      const savedProvidersStr = await AsyncStorage.getItem('@providers_config');
+      if (savedProvidersStr) {
+        const savedProviders = JSON.parse(savedProvidersStr);
+        const config = savedProviders.find(p => p.id === activeConfig.providerId);
+        if (config) {
+          return {
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            model: activeConfig.model
+          };
+        }
+      }
+      return getBuiltinConfig();
+    } catch (e) {
+      return getBuiltinConfig();
+    }
+  };
+
+  const loadActiveConfig = async () => {
+    try {
+      const activeStr = await AsyncStorage.getItem('@active_config');
+      if (activeStr) {
+        setActiveConfig(JSON.parse(activeStr));
+      }
+      const savedProvidersStr = await AsyncStorage.getItem('@providers_config');
+      const savedProviders = savedProvidersStr ? JSON.parse(savedProvidersStr) : [];
+      const builtin = { ...getBuiltinConfig(), id: 'hawk-builtin', name: 'Hawk 内置 AI', emoji: '🦅' };
+      const configured = savedProviders.filter(p => p.apiKey && p.models && p.models.length > 0);
+      setAvailableConfigs([builtin, ...configured]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // ========== 快速获取位置（优先缓存，降级GPS）==========
   const getFastLocation = async () => {
     // 1. 优先使用上次已知位置（毫秒级）
@@ -69,7 +116,7 @@ export default function HomeScreen({ navigation }) {
     ]);
   };
 
-  // 初始化获取位置
+  // 初始化获取位置 & 模型配置
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -84,7 +131,16 @@ export default function HomeScreen({ navigation }) {
         console.log('预获取定位失败（不影响手动搜索）', e);
       }
     })();
-  }, []);
+
+    // 加载模型配置
+    loadActiveConfig();
+
+    // 注册导航焦点监听，每次回到主页都刷新配置
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadActiveConfig();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // ========== 图片选择 ==========
   const pickImage = async () => {
@@ -197,21 +253,7 @@ export default function HomeScreen({ navigation }) {
     setGlobalError('');
 
     try {
-      const savedBaseUrl = await AsyncStorage.getItem('@baseUrl');
-      const savedApiKey = await AsyncStorage.getItem('@apiKey');
-      const savedModel = await AsyncStorage.getItem('@model');
-
-      if (!savedApiKey) {
-        setGlobalError('请先在右上角设置中配置大模型 API Key');
-        setGenerating(false);
-        return;
-      }
-
-      const config = {
-        baseUrl: savedBaseUrl || 'https://api.longcat.chat/openai',
-        apiKey: savedApiKey,
-        model: savedModel || 'LongCat-Flash-Omni-2603',
-      };
+      const config = await getLLMConfig();
 
       const params = {
         storeName: selectedStore?.name || '',
@@ -232,7 +274,17 @@ export default function HomeScreen({ navigation }) {
       }, ...prev]);
 
     } catch (e) {
-      setGlobalError('生成失败: ' + e.message + '\n(如果您在电脑网页预览遇到此错误，通常是因为浏览器跨域限制，请使用安卓手机安装 APK 测试)');
+      // 特殊处理内置 AI 的限速报错
+      if (e.message && e.message.includes('hawk_error')) {
+        try {
+          const errData = JSON.parse(e.message);
+          setGlobalError(errData.message);
+        } catch (_) {
+          setGlobalError('生成失败: ' + e.message);
+        }
+      } else {
+        setGlobalError('生成失败: ' + e.message + '\n(如果您在电脑网页预览遇到此错误，通常是因为浏览器跨域限制，请使用安卓手机安装 APK 测试)');
+      }
     } finally {
       setGenerating(false);
     }
@@ -349,6 +401,31 @@ export default function HomeScreen({ navigation }) {
         />
       </View>
 
+      {/* 6. 模型选择 Chip (新增) */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>使用模型</Text>
+        <TouchableOpacity 
+          style={styles.modelChip} 
+          onPress={() => {
+            loadActiveConfig();
+            setShowModelPicker(true);
+          }}
+        >
+          <View style={styles.modelChipLeft}>
+            <Text style={styles.modelChipEmoji}>
+              {availableConfigs.find(c => c.id === activeConfig.providerId)?.emoji || '🤖'}
+            </Text>
+            <View>
+              <Text style={styles.modelChipName}>
+                {availableConfigs.find(c => c.id === activeConfig.providerId)?.name || activeConfig.providerId}
+              </Text>
+              <Text style={styles.modelChipSub}>{activeConfig.model}</Text>
+            </View>
+          </View>
+          <Ionicons name="swap-horizontal" size={16} color={theme.colors.primary} />
+        </TouchableOpacity>
+      </View>
+
       {/* 界面错误提示 */}
       {globalError ? (
         <View style={styles.errorBox}>
@@ -394,6 +471,56 @@ export default function HomeScreen({ navigation }) {
       )}
 
       <View style={{ height: 40 }} />
+
+      {/* 模型选择 Modal (新增) */}
+      <Modal visible={showModelPicker} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>快速切换模型</Text>
+              <TouchableOpacity onPress={() => setShowModelPicker(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={availableConfigs}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.modelPickerProvider}>
+                  <Text style={styles.modelPickerProviderName}>{item.emoji} {item.name}</Text>
+                  {item.models.map(m => {
+                    const isSelected = activeConfig.providerId === item.id && activeConfig.model === m;
+                    return (
+                      <TouchableOpacity 
+                        key={m} 
+                        style={[styles.modelPickerItem, isSelected && styles.modelPickerItemSelected]}
+                        onPress={async () => {
+                          const newActive = { providerId: item.id, model: m };
+                          setActiveConfig(newActive);
+                          await AsyncStorage.setItem('@active_config', JSON.stringify(newActive));
+                          setShowModelPicker(false);
+                        }}
+                      >
+                        <Text style={[styles.modelPickerText, isSelected && styles.modelPickerTextSelected]}>{m}</Text>
+                        {isSelected && <Ionicons name="checkmark" size={18} color={theme.colors.primary} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            />
+            <TouchableOpacity 
+              style={styles.manageBtn}
+              onPress={() => {
+                setShowModelPicker(false);
+                navigation.navigate('Settings');
+              }}
+            >
+              <Text style={styles.manageBtnText}>管理提供商配置</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* 风格选择 Modal */}
       <Modal visible={styleModalVisible} animationType="slide" transparent={true}>
@@ -762,5 +889,77 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     marginLeft: theme.spacing.sm,
+  },
+  // ========== 新增：模型选择器样式 ==========
+  modelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  modelChipLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modelChipEmoji: {
+    fontSize: 24,
+    marginRight: theme.spacing.sm,
+  },
+  modelChipName: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  modelChipSub: {
+    color: theme.colors.textSecondary,
+    fontSize: 11,
+  },
+  modelPickerProvider: {
+    marginBottom: theme.spacing.md,
+  },
+  modelPickerProviderName: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: theme.spacing.xs,
+    paddingLeft: 4,
+  },
+  modelPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 2,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  modelPickerItemSelected: {
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    borderColor: theme.colors.primary,
+    borderWidth: 1,
+  },
+  modelPickerText: {
+    color: theme.colors.text,
+    fontSize: 14,
+  },
+  modelPickerTextSelected: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  manageBtn: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  manageBtnText: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
   },
 });

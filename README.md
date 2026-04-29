@@ -6,7 +6,7 @@
 
 **一键生成真实感强、风格多样的大众点评探店评价**
 
-[![Version](https://img.shields.io/badge/version-1.1.0-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-green)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-blue)](https://expo.dev)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
@@ -21,7 +21,7 @@
 
 **Hawk 大众点评评价生成器** 是一款基于 React Native (Expo) 开发的移动端 App，通过接入大语言模型（LLM）的多模态能力，帮助用户在拍完照片后**一键生成**高质量、真实感强的大众点评风格探店评价。
 
-只需三步：**选商铺 → 上传照片 → 点击生成**，即可得到一篇自然流畅的点评，直接复制发布。
+**v1.3.0 特色**：内置 **Hawk AI 安全中转系统**，无需配置 Key 即可秒开即用，同时支持国内外 15+ 种大模型厂商自由切换。
 
 ---
 
@@ -29,25 +29,33 @@
 
 | 功能 | 描述 |
 |------|------|
-| 🤖 **AI 智能生成** | 接入 OpenAI 兼容 API，支持多模态模型（图片 + 文字 → 点评） |
-| 🖼️ **多图上传识别** | 最多上传 9 张照片，AI 自动识别菜品、环境、细节 |
-| 📍 **高德地图搜索** | 自动获取周边商铺（防抖 + 定位缓存，响应极速） |
-| 🗂️ **多卡片历史记录** | 每次生成结果以卡片追加，可对比多版本内容 |
-| 🗑️ **一键清空重置** | 顶部一键清空图片/商铺/文字，快速开始新一篇点评 |
-| 📋 **一键复制** | 每张卡片独立复制按钮，直接粘贴到大众点评发布 |
-| ⚙️ **自定义模型** | 支持自定义 API Base URL、Key 和模型名，兼容任意 OpenAI 格式服务 |
+| 🦅 **内置 Hawk AI** | **免配置即开即用**。通过 Cloudflare Worker 安全代理内置 Gemini/Gemma 模型。 |
+| 🛡️ **安全鉴权体系** | API Key 存储于云端，App 采用混淆 Token 访问，杜绝反编译泄露 Key 风险。 |
+| ⚡ **多供应商切换** | 预设 15+ 主流厂商（DeepSeek, Qwen, Kimi, Claude 等），支持自动获取模型列表。 |
+| 🖼️ **多图上传识别** | 最多上传 9 张照片，AI 自动识别菜品、环境、细节（支持深度压缩防过大）。 |
+| 📍 **高德地图搜索** | 自动获取周边商铺（防抖 + 定位缓存，响应极速）。 |
+| 🗂️ **多卡片历史记录** | 每次生成结果以卡片追加，可对比多版本内容。 |
+| 📋 **一键复制** | 每张卡片独立复制按钮，直接粘贴到大众点评发布。 |
+
+---
+
+## 🏗️ 架构说明 (v1.3.0+)
+
+本项目在 v1.3.0 引入了 **“云端中转代理”** 架构，解决了移动端内置 API Key 的安全性痛点：
+
+1. **App 端**：持有混淆后的 `Worker URL` 和 `App Token`。
+2. **Worker 端**：在 Cloudflare 边缘运行，验证 `App Token` 有效性，并实施 **15 RPM** (每分钟请求数) 限速。
+3. **API 端**：Worker 将请求安全转发至真实的 Gemini/OpenAI API，Key 仅存储在环境变量中，不随 APK 发布。
 
 ---
 
 ## 🛠️ 技术栈
 
 - **框架**: React Native (Expo SDK 54)
-- **语言**: JavaScript / React Hooks
-- **定位**: 高德地图 Web 服务 API（`getLastKnownPositionAsync` 极速缓存策略）
-- **AI 能力**: OpenAI 兼容 API（多模态，支持图片 base64 输入）
+- **后端**: Cloudflare Workers (JS) + Workers KV (限速计数)
+- **AI 能力**: OpenAI 兼容 API / Google Gemini
 - **持久化**: `@react-native-async-storage/async-storage`
-- **大文件**: Git LFS（APK 文件）
-- **构建**: EAS Build (Expo Application Services) — JDK 17 + Node.js 20
+- **构建**: EAS Build — JDK 17 + Node.js 20
 
 ---
 
@@ -55,7 +63,7 @@
 
 ### 方式一：直接安装 APK（推荐）
 
-前往 [Releases 页面](https://github.com/h382110229/DZDPRatingGenrator/releases/latest) 下载最新的 `Hawk_DZDP_Generator_v1.1.apk`，传输到 Android 手机安装即可。
+前往 [Releases 页面](https://github.com/h382110229/DZDPRatingGenrator/releases/latest) 下载最新的 `Hawk_DZDP_Generator_v1.3.apk`，传输到 Android 手机安装即可。
 
 > ⚠️ 安装时需要在手机设置中开启「允许安装未知来源应用」
 
