@@ -59,6 +59,37 @@ export default function HomeScreen({ navigation }) {
   const [activeConfig, setActiveConfig] = useState({ providerId: 'hawk-builtin', model: 'gemma-4-31b-it' });
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [availableConfigs, setAvailableConfigs] = useState([]);
+  
+  // 新增：更新检测状态
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  // 版本对比函数 (1.3.1 vs 1.3.0)
+  const isNewerVersion = (current, latest) => {
+    const c = current.split('.').map(Number);
+    const l = latest.replace('v', '').split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      if (l[i] > (c[i] || 0)) return true;
+      if (l[i] < (c[i] || 0)) return false;
+    }
+    return false;
+  };
+
+  const checkUpdate = async () => {
+    try {
+      const response = await fetch('https://api.github.com/repos/h382110229/DZDPRatingGenrator/releases/latest');
+      const data = await response.json();
+      if (data && data.tag_name) {
+        const currentVersion = require('../app.json').expo.version;
+        if (isNewerVersion(currentVersion, data.tag_name)) {
+          setUpdateInfo(data);
+          setShowUpdateModal(true);
+        }
+      }
+    } catch (e) {
+      console.log('检查更新失败', e);
+    }
+  };
 
   // 获取完整的 LLM 配置对象（供生成使用）
   const getLLMConfig = async () => {
@@ -134,6 +165,9 @@ export default function HomeScreen({ navigation }) {
 
     // 加载模型配置
     loadActiveConfig();
+
+    // 检查更新
+    checkUpdate();
 
     // 注册导航焦点监听，每次回到主页都刷新配置
     const unsubscribe = navigation.addListener('focus', () => {
@@ -518,6 +552,39 @@ export default function HomeScreen({ navigation }) {
             >
               <Text style={styles.manageBtnText}>管理提供商配置</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 版本更新 Modal (新增) */}
+      <Modal visible={showUpdateModal} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: 'auto', paddingBottom: 30 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>发现新版本 ✨</Text>
+              <TouchableOpacity onPress={() => setShowUpdateModal(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ paddingVertical: 10 }}>
+              <Text style={{ color: theme.colors.primary, fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+                {updateInfo?.tag_name}
+              </Text>
+              <Text style={{ color: theme.colors.text, lineHeight: 20, marginBottom: 20 }}>
+                {updateInfo?.body || '由于版本迭代，建议您立即更新以获得最佳体验。'}
+              </Text>
+              
+              <TouchableOpacity 
+                style={styles.generateBtn}
+                onPress={() => {
+                  const url = updateInfo?.html_url || 'https://github.com/h382110229/DZDPRatingGenrator/releases';
+                  import('react-native').then(({ Linking }) => Linking.openURL(url));
+                  setShowUpdateModal(false);
+                }}
+              >
+                <Text style={styles.generateBtnText}>立即去下载</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
