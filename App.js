@@ -32,7 +32,7 @@ export default function App() {
           <Stack.Screen 
             name="Home" 
             component={HomeScreen} 
-            options={{ title: 'Hawk 评价生成器' }}
+            options={{ title: 'Hawkの大众点评评价生成器' }}
           />
           <Stack.Screen 
             name="Settings" 
