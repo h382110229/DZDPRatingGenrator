@@ -26,8 +26,8 @@ const b64_decode = (str) => {
 };
 
 // 混淆后的 Worker 地址: https://hawk-ai-proxy.hawkren.online/v1
-// 原字符串反转后 Base64: MXYvZW5pbG5vLm5lcmtrd2FoLnl4b3JwLWlhLWt3YWgvLzpzcHR0aA==
-const _p = 'MXYvZW5pbG5vLm5lcmtrd2FoLnl4b3JwLWlhLWt3YWgvLzpzcHR0aA==';
+// 原字符串反转后 Base64: MXYvZW5pbG5vLm5lcmt3YWgueXhvcnAtaWEta3dhaC8vOnNwdHRo
+const _p = 'MXYvZW5pbG5vLm5lcmt3YWgueXhvcnAtaWEta3dhaC8vOnNwdHRo';
 
 // 混淆后的 Token: hawk_2026_xYz9kQ3mNpR7
 const _t = 'N1JwTm0zUWRrOXpYeF82MjAyX2t3YWg=';
