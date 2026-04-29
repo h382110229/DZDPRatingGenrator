@@ -1,6 +1,8 @@
+import { getAmapConfig } from '../constants/defaults';
+
 // A hardcoded API Key for Amap Web Service. 
 // Note: This should ideally be a Web Service API Key from Amap Open Platform.
-const AMAP_WEB_KEY = '4bd0f180646b62102c49f6c0186c85bb'; // User's actual key
+const AMAP_WEB_KEY = getAmapConfig();
 
 /**
  * Helper to fetch Amap endpoints
