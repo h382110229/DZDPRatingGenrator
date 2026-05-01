@@ -6,7 +6,7 @@
 
 **一键生成真实感强、风格多样的大众点评探店评价**
 
-[![Version](https://img.shields.io/badge/version-1.3.4-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-green)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-blue)](https://expo.dev)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
@@ -21,7 +21,7 @@
 
 **Hawk 大众点评评价生成器** 是一款基于大语言模型（LLM）多模态能力的移动端 App，帮助用户在拍完照片后**一键生成**高质量、真实感强的大众点评风格探店评价。
 
-**🚀 新增 Android 原生版本 (v1.3.4)**：采用 Kotlin + Jetpack Compose 重写，告别 Expo 云打包月度限制，启动更快、体积更小！
+**🚀 新增 Android 原生版本 (v2.0.0)**：采用 Kotlin + Jetpack Compose 重写，告别 Expo 云打包月度限制，启动更快、体积更小！
 
 ---
 
@@ -58,7 +58,7 @@
 - **持久化**: `@react-native-async-storage/async-storage`
 - **构建**: EAS Build — JDK 17 + Node.js 20
 
-### Android 原生版本 (v1.3.4) 🆕
+### Android 原生版本 (v2.0.0) 🆕
 - **语言**: Kotlin 2.0.11 + Jetpack Compose
 - **架构**: MVVM + Hilt 依赖注入
 - **网络**: Retrofit 2.11.3 + OkHttp
@@ -74,7 +74,7 @@
 
 前往 [Releases 页面](https://github.com/h382110229/DZDPRatingGenrator/releases/latest) 下载最新的 APK：
 
-- **Android 原生版**（推荐）：`Hawk_DZDP_Generator_v1.3.4.apk` - 更快启动、更小体积
+- **Android 原生版**（推荐）：`Hawk_DZDP_Generator_v2.0.0.apk` - 更快启动、更小体积
 - **React Native 版**：`Hawk_DZDP_Generator_v1.3.apk` - 功能完整
 
 > ⚠️ 安装时需要在手机设置中开启「允许安装未知来源应用」
@@ -141,14 +141,14 @@ DZDPRatingGenrator/
 │   │   └── ui/             # UI 层（Compose Screens、ViewModel）
 │   └── releases/           # 预编译 APK
 └── releases/               # 发布 APK 存放目录
-    └── Hawk_DZDP_Generator_v1.3.4.apk
+    └── Hawk_DZDP_Generator_v2.0.0.apk
 ```
 
 ---
 
 ## 📈 版本历史
 
-### v1.3.4-native (Android 原生版) — 2026-05-01
+### v2.0.0 (Android 原生版) — 2026-05-01
 - 🆕 **Kotlin + Jetpack Compose 重写**：告别 Expo 云打包月度限制
 - 🆕 **Hilt 依赖注入**：标准化架构，便于测试和维护
 - 🔧 **高德 API 兼容性修复**：tel 字段类型不一致导致的崩溃

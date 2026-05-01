@@ -6,7 +6,7 @@
 
 ---
 
-## [1.3.4-native] - 2026-05-01
+## [2.0.0] - 2026-05-01
 
 ### 🆕 新增：Android 原生版本
 - **Kotlin + Jetpack Compose 重写**：全新原生 Android 实现，告别 Expo 云打包月度限制
@@ -29,7 +29,7 @@
 
 ### 📦 项目结构
 - Native 项目位于 `android-native/` 目录
-- 预编译 APK 位于 `releases/Hawk_DZDP_Generator_v1.3.4.apk`
+- 预编译 APK 位于 `releases/Hawk_DZDP_Generator_v2.0.0.apk`
 - 原 React Native 项目保持不变，两个版本并行维护
 
 ---
