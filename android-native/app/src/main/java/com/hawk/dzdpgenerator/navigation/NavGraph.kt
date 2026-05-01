@@ -57,18 +57,18 @@ sealed class BottomNavItem(
 ) {
     data object Generator : BottomNavItem(
         route = Routes.HOME,
-        label = "Generator",
-        icon = { Icon(Icons.Filled.EditNote, contentDescription = "Generator") }
+        label = "评论生成",
+        icon = { Icon(Icons.Filled.EditNote, contentDescription = "评论生成") }
     )
     data object History : BottomNavItem(
         route = Routes.HISTORY,
-        label = "History",
-        icon = { Icon(Icons.Filled.History, contentDescription = "History") }
+        label = "评论历史",
+        icon = { Icon(Icons.Filled.History, contentDescription = "评论历史") }
     )
     data object Settings : BottomNavItem(
         route = Routes.SETTINGS,
-        label = "Settings",
-        icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
+        label = "设置",
+        icon = { Icon(Icons.Filled.Settings, contentDescription = "设置") }
     )
 }
 
@@ -121,7 +121,7 @@ fun MainNavGraph() {
 
             composable(Routes.HISTORY) {
                 // TODO: implement history screen
-                PlaceholderScreen("History")
+                PlaceholderScreen("评论历史")
             }
 
             composable(Routes.SETTINGS) {

@@ -77,10 +77,12 @@ object ProviderRegistry {
         AIProvider(
             id = "longcat",
             name = "LongCat",
-            description = "超长上下文处理专家",
+            description = "免费额度 · 超长上下文处理专家",
             icon = Icons.Filled.Pets,
             iconTint = Color(0xFFFFE0B2),
-            defaultModels = listOf("longcat-chat")
+            defaultBaseUrl = "https://api.longcat.chat/openai/v1",
+            defaultModels = listOf("LongCat-2.0-Preview"),
+            isBuiltIn = true
         ),
         AIProvider(
             id = "kimi",

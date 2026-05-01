@@ -36,8 +36,8 @@ data class HomeUiState(
     val isGenerating: Boolean = false,
     val generatedResult: String? = null,
     val error: String? = null,
-    val activeProviderName: String = "Hawk 内置 AI",
-    val activeModel: String = "gemma-4-31b-it",
+    val activeProviderName: String = "LongCat",
+    val activeModel: String = "LongCat-2.0-Preview",
     // Amap search
     val showShopSearch: Boolean = false,
     val shopSearchResults: List<AmapTip> = emptyList(),
@@ -298,9 +298,9 @@ class HomeViewModel @Inject constructor(
                 val providerId = providerRepository.getActiveProviderId().first()
                 val config = providerRepository.getProviderConfig(providerId).first()
                 
-                val apiKey = config?.apiKey ?: ""
-                val baseUrl = config?.baseUrl ?: com.hawk.dzdpgenerator.data.remote.Secrets.builtinBaseUrl
-                val model = config?.selectedModel ?: "gemma-4-31b-it"
+                val apiKey = config?.apiKey ?: com.hawk.dzdpgenerator.data.remote.Secrets.longcatApiKey
+                val baseUrl = config?.baseUrl ?: com.hawk.dzdpgenerator.data.remote.Secrets.longcatBaseUrl
+                val model = config?.selectedModel ?: com.hawk.dzdpgenerator.data.remote.Secrets.longcatModel
                 
                 val result = llmRepository.generateReview(
                     shopName = state.shopName,

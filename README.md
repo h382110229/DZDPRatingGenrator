@@ -6,7 +6,7 @@
 
 **一键生成真实感强、风格多样的大众点评探店评价**
 
-[![Version](https://img.shields.io/badge/version-2.0.0-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
+[![Version](https://img.shields.io/badge/version-2.0.1-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-green)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-blue)](https://expo.dev)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
@@ -74,7 +74,7 @@
 
 前往 [Releases 页面](https://github.com/h382110229/DZDPRatingGenrator/releases/latest) 下载最新的 APK：
 
-- **Android 原生版**（推荐）：`Hawk_DZDP_Generator_v2.0.0.apk` - 更快启动、更小体积
+- **Android 原生版**（推荐）：`Hawk_DZDP_Generator_v2.0.1.apk` - 更快启动、更小体积
 - **React Native 版**：`Hawk_DZDP_Generator_v1.3.apk` - 功能完整
 
 > ⚠️ 安装时需要在手机设置中开启「允许安装未知来源应用」
@@ -141,12 +141,16 @@ DZDPRatingGenrator/
 │   │   └── ui/             # UI 层（Compose Screens、ViewModel）
 │   └── releases/           # 预编译 APK
 └── releases/               # 发布 APK 存放目录
-    └── Hawk_DZDP_Generator_v2.0.0.apk
+    └── Hawk_DZDP_Generator_v2.0.1.apk
 ```
 
 ---
 
 ## 📈 版本历史
+
+### v2.0.1 (Android 原生版) — 2026-05-01
+- 🔄 默认模型切换为 LongCat（免费额度）
+- 🌐 底部导航栏中文化
 
 ### v2.0.0 (Android 原生版) — 2026-05-01
 - 🆕 **Kotlin + Jetpack Compose 重写**：告别 Expo 云打包月度限制
