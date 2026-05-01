@@ -6,6 +6,34 @@
 
 ---
 
+## [1.3.4-native] - 2026-05-01
+
+### 🆕 新增：Android 原生版本
+- **Kotlin + Jetpack Compose 重写**：全新原生 Android 实现，告别 Expo 云打包月度限制
+- **Hilt 依赖注入**：标准化架构，便于测试和维护
+- **Retrofit + OkHttp 网络层**：替代 React Native 的 fetch，更稳定的网络请求
+- **Material Design 3 UI**：暗金主题，流畅的 Compose 动画
+- **Android Photo Picker**：系统级图片选择器，支持相机和相册，最多 9 张
+- **DataStore 持久化**：替代 AsyncStorage，更安全的本地存储
+
+### 🔧 修复
+- **高德地图 API 兼容性**：修复 `tel` 字段类型不一致（string/array）导致的 Gson 反序列化崩溃
+- **定位可靠性提升**：`lastLocation` 为 null 时自动降级为 `requestLocationUpdates`，确保附近商铺搜索可用
+- **商铺名输入联想**：输入文字即触发高德 getTips API 模糊搜索，结果卡片直接显示在输入框下方
+- **Gemma 4 思考标签过滤**：自动移除 `<thought>...</thought>` 标签，显示干净的生成结果
+
+### 🛡️ 安全
+- **API Key 混淆存储**：所有密钥采用 reverse + Base64 混淆，与原 RN 项目一致
+- **HTTP 日志分级**：Release 构建禁用网络日志，仅 Debug 模式输出
+- **硬编码 URL 清除**：Proxy URL 统一从 Secrets 读取，不再明文出现
+
+### 📦 项目结构
+- Native 项目位于 `android-native/` 目录
+- 预编译 APK 位于 `releases/Hawk_DZDP_Generator_v1.3.4.apk`
+- 原 React Native 项目保持不变，两个版本并行维护
+
+---
+
 ## [1.3.5] - 2026-04-29
 ### 🛡️ 安全加固
 - **全量敏感信息脱敏**：对高德地图 Key、Worker Token 等硬编码信息进行了 Base64 混淆处理，杜绝明文泄露。

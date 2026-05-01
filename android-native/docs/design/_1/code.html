@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configuration Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#ffba38",
+                        "surface-container-low": "#211b11",
+                        "primary": "#ffd79b",
+                        "on-tertiary-container": "#00566a",
+                        "secondary": "#c2c7ce",
+                        "surface-tint": "#ffba38",
+                        "on-background": "#eee0d0",
+                        "on-secondary": "#2c3137",
+                        "surface-container": "#251f15",
+                        "outline-variant": "#514532",
+                        "on-primary-fixed": "#281900",
+                        "primary-container": "#ffb300",
+                        "on-secondary-fixed": "#171c21",
+                        "on-secondary-fixed-variant": "#42474d",
+                        "on-error": "#690005",
+                        "surface-variant": "#3b3429",
+                        "inverse-primary": "#7e5700",
+                        "surface-container-lowest": "#130d05",
+                        "inverse-surface": "#eee0d0",
+                        "secondary-fixed": "#dee3ea",
+                        "secondary-fixed-dim": "#c2c7ce",
+                        "outline": "#9e8e78",
+                        "on-tertiary-fixed-variant": "#004e60",
+                        "surface": "#181209",
+                        "primary-fixed": "#ffdeac",
+                        "surface-dim": "#181209",
+                        "surface-container-high": "#30291e",
+                        "secondary-container": "#444a50",
+                        "on-surface-variant": "#d6c4ac",
+                        "tertiary-fixed-dim": "#43d6ff",
+                        "on-tertiary": "#003543",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "background": "#181209",
+                        "error": "#ffb4ab",
+                        "tertiary": "#a4e7ff",
+                        "inverse-on-surface": "#372f24",
+                        "on-primary-fixed-variant": "#604100",
+                        "tertiary-container": "#00d2fe",
+                        "surface-bright": "#40382d",
+                        "on-primary": "#432c00",
+                        "on-tertiary-fixed": "#001f28",
+                        "on-primary-container": "#6b4900",
+                        "on-secondary-container": "#b4b9c0",
+                        "surface-container-highest": "#3b3429",
+                        "on-surface": "#eee0d0",
+                        "tertiary-fixed": "#b5ebff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "4px",
+                        "stack-lg": "24px",
+                        "padding-card": "16px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "stack-md": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "display-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "0px", "fontWeight": "500" }],
+                        "display-md": ["45px", { "lineHeight": "52px", "letterSpacing": "0px", "fontWeight": "700" }],
+                        "headline-md": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1A1C20;
+            color: #eee0d0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen flex flex-col pt-16 pb-24">
+<!-- TopAppBar Shared Component -->
+<header class="bg-slate-950 font-['Inter'] font-semibold text-lg tracking-tight docked full-width top-0 border-b border-slate-800 flat no shadows fixed top-0 left-0 w-full z-50 flex items-center px-4 h-16">
+<button class="text-slate-400 hover:bg-slate-800/50 active:scale-95 transition-transform duration-150 p-2 rounded-full mr-3 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-amber-500 font-bold text-xl flex-1">Configuration Details</h1>
+</header>
+<main class="flex-1 px-margin-mobile flex flex-col gap-stack-lg max-w-2xl mx-auto w-full pt-stack-lg">
+<!-- Header Section -->
+<section class="flex flex-col items-center text-center gap-stack-md py-stack-lg">
+<div class="w-24 h-24 rounded-full bg-primary-container flex items-center justify-center shadow-[0_0_0_8px_rgba(255,179,0,0.1)]">
+<span class="material-symbols-outlined text-on-primary-container text-5xl" data-icon="psychiatry" data-weight="fill" style="font-variation-settings: 'FILL' 1;">psychiatry</span>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<h2 class="font-title-lg text-title-lg text-on-surface">DeepSeek</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">性价比极高的国产模型</p>
+</div>
+</section>
+<!-- Form Section -->
+<section class="bg-[#2C323A] rounded-xl p-padding-card flex flex-col gap-stack-lg border border-outline-variant/30">
+<!-- API Key Field -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="api-key">API Key</label>
+<div class="relative">
+<input class="w-full bg-[#3A414A] text-on-surface font-body-md text-body-md rounded-lg px-4 py-3 border-none focus:ring-1 focus:ring-primary-container focus:outline-none placeholder:text-on-surface-variant/50 pr-12" id="api-key" placeholder="请输入您的 API Key" type="password"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" data-icon="visibility_off">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Base URL Field -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="base-url">Base URL</label>
+<input class="w-full bg-[#3A414A] text-on-surface font-body-md text-body-md rounded-lg px-4 py-3 border-none focus:ring-1 focus:ring-primary-container focus:outline-none placeholder:text-on-surface-variant/50" id="base-url" placeholder="https://api.deepseek.com/v1" type="url"/>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs mt-1">API 的基础地址</p>
+</div>
+<!-- Model Selection Field -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="model-select">模型</label>
+<div class="relative">
+<select class="w-full bg-[#3A414A] text-on-surface font-body-md text-body-md rounded-lg px-4 py-3 border-none focus:ring-1 focus:ring-primary-container focus:outline-none appearance-none pr-10" id="model-select">
+<option selected="" value="deepseek-chat">deepseek-chat</option>
+<option value="deepseek-coder">deepseek-coder</option>
+</select>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="arrow_drop_down">arrow_drop_down</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Action Button -->
+<button class="w-full bg-primary-container text-on-primary-container font-label-lg text-label-lg py-4 rounded-xl font-bold hover:bg-primary-fixed transition-colors active:scale-[0.98] mt-stack-md flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="save">save</span>
+            保存配置
+        </button>
+<!-- Footer Text -->
+<p class="text-center font-body-md text-body-md text-on-surface-variant text-xs flex items-center justify-center gap-1 opacity-80">
+<span class="material-symbols-outlined text-[14px]" data-icon="lock">lock</span>
+            您的 API Key 仅存储在本地，不会上传到任何服务器
+        </p>
+</main>
+<!-- BottomNavBar Shared Component - Suppressed based on semantic shell logic (Configuration Details is a Task-Focused sub-page) -->
+</body></html>

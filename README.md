@@ -6,7 +6,7 @@
 
 **一键生成真实感强、风格多样的大众点评探店评价**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
+[![Version](https://img.shields.io/badge/version-1.3.4-gold)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-green)](https://github.com/h382110229/DZDPRatingGenrator/releases)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-blue)](https://expo.dev)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](./LICENSE)
@@ -19,9 +19,9 @@
 
 ## 📖 项目简介
 
-**Hawk 大众点评评价生成器** 是一款基于 React Native (Expo) 开发的移动端 App，通过接入大语言模型（LLM）的多模态能力，帮助用户在拍完照片后**一键生成**高质量、真实感强的大众点评风格探店评价。
+**Hawk 大众点评评价生成器** 是一款基于大语言模型（LLM）多模态能力的移动端 App，帮助用户在拍完照片后**一键生成**高质量、真实感强的大众点评风格探店评价。
 
-**v1.3.0 特色**：内置 **Hawk AI 安全中转系统**，无需配置 Key 即可秒开即用，同时支持国内外 15+ 种大模型厂商自由切换。
+**🚀 新增 Android 原生版本 (v1.3.4)**：采用 Kotlin + Jetpack Compose 重写，告别 Expo 云打包月度限制，启动更快、体积更小！
 
 ---
 
@@ -41,7 +41,7 @@
 
 ## 🏗️ 架构说明 (v1.3.0+)
 
-本项目在 v1.3.0 引入了 **“云端中转代理”** 架构，解决了移动端内置 API Key 的安全性痛点：
+本项目在 v1.3.0 引入了 **"云端中转代理"** 架构，解决了移动端内置 API Key 的安全性痛点：
 
 1. **App 端**：持有混淆后的 `Worker URL` 和 `App Token`。
 2. **Worker 端**：在 Cloudflare 边缘运行，验证 `App Token` 有效性，并实施 **15 RPM** (每分钟请求数) 限速。
@@ -51,11 +51,20 @@
 
 ## 🛠️ 技术栈
 
+### React Native 版本 (v1.3.5)
 - **框架**: React Native (Expo SDK 54)
 - **后端**: Cloudflare Workers (JS) + Workers KV (限速计数)
 - **AI 能力**: OpenAI 兼容 API / Google Gemini
 - **持久化**: `@react-native-async-storage/async-storage`
 - **构建**: EAS Build — JDK 17 + Node.js 20
+
+### Android 原生版本 (v1.3.4) 🆕
+- **语言**: Kotlin 2.0.11 + Jetpack Compose
+- **架构**: MVVM + Hilt 依赖注入
+- **网络**: Retrofit 2.11.3 + OkHttp
+- **UI**: Material Design 3 + 暗金主题
+- **存储**: DataStore Preferences
+- **构建**: Gradle + AGP 8.9.2
 
 ---
 
@@ -63,37 +72,29 @@
 
 ### 方式一：直接安装 APK（推荐）
 
-前往 [Releases 页面](https://github.com/h382110229/DZDPRatingGenrator/releases/latest) 下载最新的 `Hawk_DZDP_Generator_v1.3.apk`，传输到 Android 手机安装即可。
+前往 [Releases 页面](https://github.com/h382110229/DZDPRatingGenrator/releases/latest) 下载最新的 APK：
+
+- **Android 原生版**（推荐）：`Hawk_DZDP_Generator_v1.3.4.apk` - 更快启动、更小体积
+- **React Native 版**：`Hawk_DZDP_Generator_v1.3.apk` - 功能完整
 
 > ⚠️ 安装时需要在手机设置中开启「允许安装未知来源应用」
 
 ### 方式二：本地开发运行
 
-**1. 环境准备**
-
-确保已安装 [Node.js 20+](https://nodejs.org/) 和 npm。
-
-**2. 克隆并安装依赖**
+**React Native 版**
 ```bash
 git clone https://github.com/h382110229/DZDPRatingGenrator.git
 cd DZDPRatingGenrator
 npm install
+npm start
 ```
 
-**3. 配置 API Key**
-
-打开 App → 右上角 ⚙️ 设置，填入：
-- **API Base URL**：如 `https://api.openai.com/v1` 或其他 OpenAI 兼容服务地址
-- **API Key**：您的密钥
-- **模型名称**：如 `gpt-4o`、`gpt-4-vision-preview` 等支持多模态的模型
-
-高德地图 Key 在 `services/amapService.js` 第 3 行替换为您自己的 Web 服务 Key。
-
-**4. 启动开发服务器**
+**Android 原生版**
 ```bash
-npm start
-# 用 Expo Go App 扫码，或连接 Android 设备后运行：
-npm run android
+git clone https://github.com/h382110229/DZDPRatingGenrator.git
+cd DZDPRatingGenrator/android-native
+./gradlew assembleDebug
+# APK 位于 app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ---
@@ -129,28 +130,45 @@ DZDPRatingGenrator/
 ├── screens/
 │   ├── HomeScreen.js       # 主页面（图片上传、商铺选择、生成评价）
 │   └── SettingsScreen.js   # 设置页（API Key、模型配置）
-└── services/
-    ├── amapService.js      # 高德地图 API 封装（周边搜索、模糊联想）
-    └── llmService.js       # 大语言模型 API 封装（多模态生成）
+├── services/
+│   ├── amapService.js      # 高德地图 API 封装（周边搜索、模糊联想）
+│   └── llmService.js       # 大语言模型 API 封装（多模态生成）
+├── android-native/         # 🆕 Android 原生版本
+│   ├── app/src/main/java/com/hawk/dzdpgenerator/
+│   │   ├── di/             # Hilt 依赖注入模块
+│   │   ├── data/           # 数据层（Repository、API、DataStore）
+│   │   ├── domain/         # 领域层（UseCase）
+│   │   └── ui/             # UI 层（Compose Screens、ViewModel）
+│   └── releases/           # 预编译 APK
+└── releases/               # 发布 APK 存放目录
+    └── Hawk_DZDP_Generator_v1.3.4.apk
 ```
 
 ---
 
 ## 📈 版本历史
 
-### v1.1.0 (当前版本) — 2026-04-28
-- ⚡ **高德 API 防抖优化**：搜索框加入 400ms 防抖，避免频繁请求
-- ⚡ **定位极速缓存**：优先使用 `getLastKnownPositionAsync` 毫秒级返回，失败降级并加 8s 超时
-- 🔕 **定位失败静默**：定位不可用时不再弹出 Alert 打断操作，可直接手动输入商铺名
-- ✨ **多卡片历史记录**：生成结果不再覆盖，以卡片流形式追加，每张卡片含时间戳和店名
-- ✨ **一键清空按钮**：顶部新增红色清空按钮，一键重置图片/商铺/文字输入
-- 🔧 **EAS 构建修复**：升级至 JDK 17 镜像 + Node.js 20，修复 `toReversed` 兼容问题
+### v1.3.4-native (Android 原生版) — 2026-05-01
+- 🆕 **Kotlin + Jetpack Compose 重写**：告别 Expo 云打包月度限制
+- 🆕 **Hilt 依赖注入**：标准化架构，便于测试和维护
+- 🔧 **高德 API 兼容性修复**：tel 字段类型不一致导致的崩溃
+- 🛡️ **安全加固**：API Key 混淆存储、HTTP 日志分级、硬编码 URL 清除
+
+### v1.3.5 — 2026-04-29
+- 🛡️ **全量敏感信息脱敏**：Base64 混淆处理，杜绝明文泄露
+
+### v1.3.0 — 2026-04-29
+- 🦅 **内置 Hawk AI 安全中转系统**
+- ⚡ **多供应商切换**：预设 15+ 主流厂商
+- 🛡️ **请求限速**：15 RPM 防滥用
+
+### v1.1.0 — 2026-04-28
+- ✨ 多卡片历史记录
+- ⚡ 高德 API 防抖优化
 
 ### v0.1.0 — 初始版本
 - 基础 AI 点评生成功能
 - 高德地图周边商铺搜索
-- OpenAI 兼容 API 接入
-- 自定义 API 配置页
 
 ---
 

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hawk の大众点评评价生成器</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#6b4900",
+                        "on-tertiary-fixed": "#001f28",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#171c21",
+                        "on-primary-fixed-variant": "#604100",
+                        "tertiary": "#a4e7ff",
+                        "tertiary-fixed-dim": "#43d6ff",
+                        "secondary": "#c2c7ce",
+                        "on-error-container": "#ffdad6",
+                        "on-primary": "#432c00",
+                        "surface-container-highest": "#3b3429",
+                        "on-background": "#eee0d0",
+                        "background": "#181209",
+                        "surface-dim": "#181209",
+                        "on-surface": "#eee0d0",
+                        "on-secondary-fixed-variant": "#42474d",
+                        "surface-variant": "#3b3429",
+                        "on-secondary-container": "#b4b9c0",
+                        "primary-fixed-dim": "#ffba38",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#c2c7ce",
+                        "tertiary-fixed": "#b5ebff",
+                        "surface": "#181209",
+                        "primary-fixed": "#ffdeac",
+                        "primary-container": "#ffb300",
+                        "on-tertiary-container": "#00566a",
+                        "surface-container-low": "#211b11",
+                        "tertiary-container": "#00d2fe",
+                        "surface-container": "#251f15",
+                        "on-tertiary": "#003543",
+                        "on-surface-variant": "#d6c4ac",
+                        "on-tertiary-fixed-variant": "#004e60",
+                        "inverse-on-surface": "#372f24",
+                        "secondary-container": "#444a50",
+                        "outline": "#9e8e78",
+                        "surface-bright": "#40382d",
+                        "inverse-primary": "#7e5700",
+                        "primary": "#ffd79b",
+                        "surface-tint": "#ffba38",
+                        "surface-container-lowest": "#130d05",
+                        "on-secondary": "#2c3137",
+                        "outline-variant": "#514532",
+                        "on-primary-fixed": "#281900",
+                        "secondary-fixed": "#dee3ea",
+                        "on-error": "#690005",
+                        "inverse-surface": "#eee0d0",
+                        "surface-container-high": "#30291e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "12px",
+                        "stack-lg": "24px",
+                        "base": "8px",
+                        "gutter": "16px",
+                        "margin-mobile": "16px",
+                        "padding-card": "16px",
+                        "stack-sm": "4px"
+                    },
+                    "fontFamily": {
+                        "sans": ["Inter", "sans-serif"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "display-md": ["Inter"],
+                        "title-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500" }],
+                        "headline-md": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500" }],
+                        "display-md": ["45px", { "lineHeight": "52px", "letterSpacing": "0px", "fontWeight": "700" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "0px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #1A1C20; color: #eee0d0; font-family: 'Inter', sans-serif; }
+        .surface-card { background-color: #2C323A; }
+        .text-gold { color: #FFB300; }
+        .bg-gold { background-color: #FFB300; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="antialiased font-sans font-body-md text-body-md overflow-x-hidden min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-4 h-16 bg-[#1A1C20] border-b border-[#2C323A] flat no shadows">
+<button class="active:scale-95 duration-150 p-2 -ml-2 rounded-full hover:bg-[#2C323A] transition-colors">
+<span class="material-symbols-outlined text-[#FFB300]">auto_awesome</span>
+</button>
+<h1 class="text-[#FFB300] font-black text-xl font-['Inter'] text-lg tracking-tight truncate px-4">Hawk の大众点评评价生成器</h1>
+<button class="active:scale-95 duration-150 p-2 -mr-2 rounded-full hover:bg-[#2C323A] transition-colors">
+<span class="material-symbols-outlined text-gray-400">settings</span>
+</button>
+</header>
+<main class="pt-20 px-margin-mobile max-w-2xl mx-auto space-y-stack-lg">
+<!-- Image Upload -->
+<section class="space-y-stack-md">
+<h2 class="font-title-md text-title-md text-on-surface">上传图片（最高9张）</h2>
+<div class="grid grid-cols-3 gap-2">
+<div class="aspect-square rounded-lg overflow-hidden surface-card relative group">
+<img alt="Restaurant interior" class="w-full h-full object-cover" data-alt="A moody, high-end restaurant interior with warm ambient lighting. Deep shadows contrast with bright highlights on the wooden tables and leather booths. The scene evokes a sophisticated dining experience, fitting the modern corporate dark mode aesthetic with rich blacks and warm tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcXLshxRPSrPt-kYEtd4IME8SE2ixtl2Ye4XRFq2h471pvv-dOjDjBK0dZWNKcCvkFQwvswSCM3DD3dKAPhAIu1Fa5QMpwY9dso1nS-nUckhhP4pyTy7mM7E4af3UjwnVfxIDUlIo6oMMuSssNnUyx3sKof189DUOsn4X6a-2b_otcm_X6QhwtNzXkigVVx2Rmv6qQOjAYB8WutXEA_vk4unsKT7Z8yaeO6rCoXTTjBbK7MtEMaYGQv7-lsRuciXTIzM8Rh7KDuZvd"/>
+<button class="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+<div class="aspect-square rounded-lg overflow-hidden surface-card relative group">
+<img alt="Spicy hotpot" class="w-full h-full object-cover" data-alt="A close-up shot of a bubbling, vibrant red spicy hotpot. The rich, fiery broth contrasts intensely against the dark, high-end cockpit aesthetic of the UI. Steam rises softly, adding texture and depth to the deep, monochromatic background environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtnXXFUE8JamQBMvbFQPRFxFFToPwKmEl-9Q5Mgun1PEaPmuFNDGsKl7fl5SCobyitGO_POjblkhh9LPEbhYegjCMYOKv4Go2W9u9-5LzSRdksaWaSnFiefaAfmX7lsuZwaEHlS1hF9jHsgUY25BdJwv-CgpO6tviSahDQ9Y8WmqR8OVdbw_DdmMs974_m0P3DBEPEGs5mib6ln259pTx0DK8weysdfgO3e-1gY_BryvCMMpy03p8YB1ggNjTYauOrzBiPg7I8iJt_"/>
+<button class="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+<button class="aspect-square rounded-lg surface-card flex flex-col items-center justify-center text-gray-400 hover:text-gold hover:bg-[#3b414a] transition-colors border border-dashed border-[#514532]">
+<span class="material-symbols-outlined text-3xl mb-1">add</span>
+<span class="font-label-md text-label-md">添加图片</span>
+</button>
+</div>
+</section>
+<!-- Configuration Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<!-- Shop Selection -->
+<section class="surface-card rounded-xl p-padding-card flex flex-col justify-between space-y-stack-md md:col-span-2">
+<h2 class="font-title-md text-title-md text-on-surface">商店名称</h2>
+<div class="relative">
+<input class="w-full bg-[#1A1C20] border border-[#514532] rounded-lg py-3 pl-4 pr-12 text-on-surface placeholder:text-gray-500 focus:outline-none focus:border-[#FFB300] focus:ring-1 focus:ring-[#FFB300] transition-shadow" placeholder="点击选择或搜索商铺" type="text"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">location_on</span>
+</div>
+</section>
+<!-- Style Selection -->
+<section class="surface-card rounded-xl p-padding-card space-y-stack-md">
+<h2 class="font-title-md text-title-md text-on-surface">点评风格</h2>
+<div class="relative">
+<select class="w-full bg-[#1A1C20] border border-[#514532] rounded-lg py-3 px-4 text-on-surface appearance-none focus:outline-none focus:border-[#FFB300] focus:ring-1 focus:ring-[#FFB300]">
+<option value="wanghong">网红探店风</option>
+<option value="zhengjing">正经老饕风</option>
+<option value="tucao">犀利吐槽风</option>
+<option value="jianyue">简约极简风</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
+</div>
+</section>
+<!-- Settings Combo -->
+<div class="space-y-stack-md flex flex-col">
+<!-- Word Count -->
+<section class="surface-card rounded-xl p-padding-card space-y-stack-md flex-1">
+<div class="flex justify-between items-center">
+<h2 class="font-title-md text-title-md text-on-surface">字数建议</h2>
+<span class="material-symbols-outlined text-gray-400 text-sm">edit</span>
+</div>
+<input class="w-full bg-[#1A1C20] border border-[#514532] rounded-lg py-3 px-4 text-on-surface text-center focus:outline-none focus:border-[#FFB300] focus:ring-1 focus:ring-[#FFB300]" type="number" value="200"/>
+</section>
+<!-- Model Choice -->
+<section class="surface-card rounded-xl p-padding-card flex items-center justify-between border border-[#514532]/50">
+<div class="flex flex-col">
+<h2 class="font-label-md text-label-md text-gray-400 mb-1">使用模型</h2>
+<span class="font-title-md text-title-md text-on-surface font-semibold">GPT-4o</span>
+</div>
+<div class="bg-[#1A1C20] p-2 rounded-full border border-[#FFB300]/30 shadow-[0_0_10px_rgba(255,179,0,0.1)]">
+<span class="material-symbols-outlined text-[#FFB300] text-xl block">magic_button</span>
+</div>
+</section>
+</div>
+</div>
+<!-- Personal Input -->
+<section class="surface-card rounded-xl p-padding-card space-y-stack-md relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-[#FFB300]/5 to-transparent pointer-events-none"></div>
+<h2 class="font-title-md text-title-md text-on-surface flex items-center gap-2 relative z-10">
+                简单感受 <span class="font-label-md text-label-md text-gray-500 font-normal">（选填）</span>
+</h2>
+<textarea class="w-full bg-[#1A1C20] border border-[#514532] rounded-lg p-4 text-on-surface placeholder:text-gray-500 focus:outline-none focus:border-[#FFB300] focus:ring-1 focus:ring-[#FFB300] resize-none relative z-10" placeholder="有什么特别想夸或吐槽的？" rows="3"></textarea>
+</section>
+<!-- Primary Button -->
+<button class="w-full bg-gold text-[#171c21] font-title-lg text-title-lg font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(255,179,0,0.2)] hover:bg-[#ffba38] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+            一键生成点评 <span class="text-2xl">🦅</span>
+</button>
+<!-- History Section -->
+<section class="space-y-stack-md mt-stack-lg">
+<h2 class="font-title-md text-title-md text-on-surface flex items-center gap-2 border-b border-[#2C323A] pb-2">
+<span class="material-symbols-outlined text-gray-400">history</span>
+                生成记录
+            </h2>
+<div class="space-y-stack-md">
+<!-- History Card 1 -->
+<div class="surface-card rounded-xl p-padding-card space-y-3 hover:bg-[#333a43] transition-colors border border-transparent hover:border-[#514532]">
+<div class="flex justify-between items-center text-gray-400 font-label-md text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">storefront</span> 小龙坎老火锅</span>
+<span>2023-10-27 12:30</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface line-clamp-3 text-gray-300">
+                        不得不说，这家小龙坎真的是排队王者👑！周末拉着朋友来吃，锅底醇厚红亮，牛油味一绝。毛肚七上八下脆爽弹牙，酥肉炸得外焦里嫩，直接吃或者下锅煮都超级棒。服务员添汤很及时，环境也是古色古香的。强烈推荐给爱吃辣的朋友们！🌶️🔥
+                    </p>
+<div class="flex justify-end pt-2 border-t border-[#1A1C20]">
+<button class="flex items-center gap-1 text-gold font-label-md text-label-md hover:text-[#ffdeac] transition-colors px-3 py-1.5 rounded-lg hover:bg-[#FFB300]/10">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+                            复制全文
+                        </button>
+</div>
+</div>
+<!-- History Card 2 -->
+<div class="surface-card rounded-xl p-padding-card space-y-3 hover:bg-[#333a43] transition-colors border border-transparent hover:border-[#514532]">
+<div class="flex justify-between items-center text-gray-400 font-label-md text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">storefront</span> % Arabica</span>
+<span>2023-10-25 15:45</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface line-clamp-3 text-gray-300">
+                        极简风的装修真的非常出片📸。点了一杯经典的西班牙拿铁，拉花很精致，口感丝滑，炼乳的甜味和咖啡的醇香融合得恰到好处，不会觉得腻。虽然价格略高，但坐在窗边看着街景发呆，度过一个悠闲的下午也是值得的。☕️✨
+                    </p>
+<div class="flex justify-end pt-2 border-t border-[#1A1C20]">
+<button class="flex items-center gap-1 text-gold font-label-md text-label-md hover:text-[#ffdeac] transition-colors px-3 py-1.5 rounded-lg hover:bg-[#FFB300]/10">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+                            复制全文
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 h-20 pb-safe bg-[#1A1C20] border-t border-[#2C323A] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)] md:hidden">
+<button class="flex flex-col items-center justify-center text-[#FFB300] bg-[#FFB300]/10 rounded-xl px-4 py-1 active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-wider">Generator</span>
+</button>
+<button class="flex flex-col items-center justify-center text-gray-500 hover:text-[#FFB300]/80 active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1">history</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-wider">History</span>
+</button>
+<button class="flex flex-col items-center justify-center text-gray-500 hover:text-[#FFB300]/80 active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-wider">Settings</span>
+</button>
+</nav>
+</body></html>
