@@ -25,12 +25,13 @@ const b64_decode = (str) => {
   return output;
 };
 
-// 混淆后的 Worker 地址: https://hawk-ai-proxy.hawkren.online/v1
-// 原字符串反转后 Base64: MXYvZW5pbG5vLm5lcmt3YWgueXhvcnAtaWEta3dhaC8vOnNwdHRo
-const _p = 'MXYvZW5pbG5vLm5lcmt3YWgueXhvcnAtaWEta3dhaC8vOnNwdHRo';
+// 混淆后的 Worker 地址 (小米Mimo API): https://token-plan-cn.xiaomimimo.com/v1
+// 原字符串反转后 Base64: MXYvbW9jLm9taW1pbW9haXgubmMtbmFscC1uZWtvdC8vOnNwdHRo
+const _p = 'MXYvbW9jLm9taW1pbW9haXgubmMtbmFscC1uZWtvdC8vOnNwdHRo';
 
-// 混淆后的 Token
-const _t = 'N1JwTm0zUWRrOXpYeF82MjAyX2t3YWg=';
+// 混淆后的 Token (小米Mimo API Key): tp-cqgq4v673a06yjeis0s5xjgny0tz9iwki3ia3wvru618jvqj
+// 原字符串反转后 Base64: anF2ajgxNnVydnczYWkzaWt3aTl6dDB5bmdqeDVzMHNpZWp5NjBhMzc2djRxZ3FjLXB0
+const _t = 'anF2ajgxNnVydnczYWkzaWt3aTl6dDB5bmdqeDVzMHNpZWp5NjBhMzc2djRxZ3FjLXB0';
 
 // 混淆后的高德 Key
 // 原字符串反转后 Base64: YmI1OGM2ODEwYzZmOTRjMjAxMjZiNjQ2MDgxZjBkYjQ=
@@ -59,8 +60,8 @@ export const getBuiltinConfig = () => {
   return {
     baseUrl: decode(_p),
     apiKey: decode(_t),
-    model: 'gemma-4-31b-it',
-    models: ['gemma-4-31b-it'],
+    model: 'mimo-v2.5',
+    models: ['mimo-v2.5'],
     isBuiltin: true
   };
 };

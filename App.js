@@ -4,8 +4,6 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 
 import HomeScreen from './screens/HomeScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import ProviderDetailScreen from './screens/ProviderDetailScreen';
 import { theme } from './constants/theme';
 
 const Stack = createStackNavigator();
@@ -20,30 +18,24 @@ export default function App() {
           screenOptions={{
             headerStyle: {
               backgroundColor: theme.colors.background,
-              shadowColor: 'transparent', // iOS
-              elevation: 0, // Android
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+              elevation: 0, // Remove shadow for a flatter, modern look with border
+              shadowOpacity: 0,
             },
             headerTintColor: theme.colors.primary,
             headerTitleStyle: {
               fontWeight: 'bold',
+              fontSize: 17,
             },
+            headerBackTitleVisible: false, // Prevent title truncation on iOS
             cardStyle: { backgroundColor: theme.colors.background }
           }}
         >
           <Stack.Screen 
             name="Home" 
             component={HomeScreen} 
-            options={{ title: 'Hawkの大众点评评价生成器' }}
-          />
-          <Stack.Screen 
-            name="Settings" 
-            component={SettingsScreen} 
-            options={{ title: '模型服务商' }}
-          />
-          <Stack.Screen 
-            name="ProviderDetail" 
-            component={ProviderDetailScreen} 
-            options={{ title: '配置详情' }}
+            options={{ title: 'HAWK 点评生成器' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

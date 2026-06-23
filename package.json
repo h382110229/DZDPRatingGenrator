@@ -1,6 +1,6 @@
 {
   "name": "dzdpratinggenrator",
-  "version": "1.0.0",
+  "version": "2.0.2",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -16,6 +16,7 @@
     "@react-navigation/stack": "^7.8.11",
     "expo": "~54.0.34",
     "expo-clipboard": "~8.0.8",
+    "expo-haptics": "~15.0.8",
     "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.11",
     "expo-location": "~19.0.8",

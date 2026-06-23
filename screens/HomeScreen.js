@@ -1,33 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Modal, FlatList
+  Image, ActivityIndicator, Alert, Modal, FlatList, Platform, Linking
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { searchAround, getTips } from '../services/amapService';
 import { generateReview } from '../services/llmService';
 import { getBuiltinConfig } from '../constants/defaults';
-import { PROVIDER_PRESETS } from '../constants/providerPresets';
+import { REVIEW_STYLES } from '../constants/reviewStyles';
 
-// ========== 点评风格列表 ==========
-const REVIEW_STYLES = [
-  { name: '🎲 随机风格', wordCount: 200, promptHint: '' },
-  { name: '🌟 真实好友安利型', wordCount: 200, promptHint: '语气口语化自然，像给好友发消息安利，轻松接地气，有真实感，可以用一些网络流行语。' },
-  { name: '📖 图文探店博主型', wordCount: 350, promptHint: '结构化写作，分段清晰，可以有小标题（如「环境篇」「口味篇」），有博主探店的专业感。' },
-  { name: '😋 吃货深度测评型', wordCount: 300, promptHint: '聚焦食物本身，细致描述口感、食材、味道层次，用词精准有感染力，让读者垂涎三尺。' },
-  { name: '🏆 五星好评精华型', wordCount: 150, promptHint: '简洁有力，快速突出最大亮点，开门见山，言简意赅，适合高评分短点评。' },
-  { name: '💬 故事叙事型', wordCount: 280, promptHint: '以一次完整的探店经历展开叙述，有时间线和故事感，让读者有代入感，像在讲一个小故事。' },
-  { name: '🔍 挑剔达人型', wordCount: 300, promptHint: '真实呈现优缺点，整体正向但有细节吐槽，有专业感和可信度，让人觉得是真实体验。' },
-  { name: '🎉 节日打卡型', wordCount: 180, promptHint: '带入节日/生日/约会等场景，情绪饱满温馨，适合特殊场合打卡，有仪式感。' },
-  { name: '💼 商务正式型', wordCount: 220, promptHint: '用词正式得体，强调服务品质和专业水准，适合高档餐厅，语气沉稳有格调。' },
-  { name: '🌿 文艺清新型', wordCount: 250, promptHint: '文字唯美有意境，注重氛围和感受的细腻描写，像一篇小散文，清新脱俗。' },
-  { name: '🤣 幽默搞笑型', wordCount: 200, promptHint: '风趣幽默，有梗有料，适度夸张，读起来让人开心发笑，但核心评价仍然真实。' },
+const PRESET_TAGS = [
+  '味道惊艳', '食材新鲜', '分量充足', '性价比高',
+  '环境优雅', '干净卫生', '服务热情', '排队较久',
+  '避雷不值', '稍微小贵', '适合聚会', '上菜很快'
 ];
 
 export default function HomeScreen({ navigation }) {
@@ -50,16 +42,16 @@ export default function HomeScreen({ navigation }) {
   const [userReview, setUserReview] = useState('');
   const [wordCount, setWordCount] = useState('200');
 
-  // 状态：生成结果
+  // 新增：打分与标签状态
+  const [rating, setRating] = useState(5);
+  const [selectedTags, setSelectedTags] = useState([]);
+
+  // 状态：生成结果与进度
   const [generating, setGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState(0); // 0: idle, 1: preprocess, 2: extract, 3: llm
   const [reviewHistory, setReviewHistory] = useState([]); // 替代 resultText
   const [globalError, setGlobalError] = useState(''); // 新增：跨域等网络报错的界面展示
 
-  // ========== 新增：模型配置状态 ==========
-  const [activeConfig, setActiveConfig] = useState({ providerId: 'hawk-builtin', model: 'gemma-4-31b-it' });
-  const [showModelPicker, setShowModelPicker] = useState(false);
-  const [availableConfigs, setAvailableConfigs] = useState([]);
-  
   // 新增：更新检测状态
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -91,43 +83,15 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // 获取完整的 LLM 配置对象（供生成使用）
-  const getLLMConfig = async () => {
+  // 加载本地历史记录
+  const loadHistory = async () => {
     try {
-      if (activeConfig.providerId === 'hawk-builtin') {
-        return getBuiltinConfig();
+      const savedHistory = await AsyncStorage.getItem('@review_history');
+      if (savedHistory) {
+        setReviewHistory(JSON.parse(savedHistory));
       }
-      const savedProvidersStr = await AsyncStorage.getItem('@providers_config');
-      if (savedProvidersStr) {
-        const savedProviders = JSON.parse(savedProvidersStr);
-        const config = savedProviders.find(p => p.id === activeConfig.providerId);
-        if (config) {
-          return {
-            baseUrl: config.baseUrl,
-            apiKey: config.apiKey,
-            model: activeConfig.model
-          };
-        }
-      }
-      return getBuiltinConfig();
     } catch (e) {
-      return getBuiltinConfig();
-    }
-  };
-
-  const loadActiveConfig = async () => {
-    try {
-      const activeStr = await AsyncStorage.getItem('@active_config');
-      if (activeStr) {
-        setActiveConfig(JSON.parse(activeStr));
-      }
-      const savedProvidersStr = await AsyncStorage.getItem('@providers_config');
-      const savedProviders = savedProvidersStr ? JSON.parse(savedProvidersStr) : [];
-      const builtin = { ...getBuiltinConfig(), id: 'hawk-builtin', name: 'Hawk 内置 AI', emoji: '🦅' };
-      const configured = savedProviders.filter(p => p.apiKey && p.models && p.models.length > 0);
-      setAvailableConfigs([builtin, ...configured]);
-    } catch (e) {
-      console.error(e);
+      console.error('加载历史记录失败', e);
     }
   };
 
@@ -147,7 +111,7 @@ export default function HomeScreen({ navigation }) {
     ]);
   };
 
-  // 初始化获取位置 & 模型配置
+  // 初始化获取位置 & 历史记录
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -163,17 +127,11 @@ export default function HomeScreen({ navigation }) {
       }
     })();
 
-    // 加载模型配置
-    loadActiveConfig();
+    // 加载历史记录
+    loadHistory();
 
     // 检查更新
     checkUpdate();
-
-    // 注册导航焦点监听，每次回到主页都刷新配置
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadActiveConfig();
-    });
-    return unsubscribe;
   }, [navigation]);
 
   // ========== 图片选择 ==========
@@ -285,9 +243,24 @@ export default function HomeScreen({ navigation }) {
 
     setGenerating(true);
     setGlobalError('');
+    setGenerationStep(1);
 
     try {
-      const config = await getLLMConfig();
+      // 触觉反馈开始生成
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+
+      // 阶段 1: 压缩/多模态图片处理 (若有图)
+      if (images.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 800)); // 模拟对图片的分析过程展示
+      }
+
+      // 阶段 2: 提取商铺与特征
+      setGenerationStep(2);
+      await new Promise(resolve => setTimeout(resolve, 600)); // 模拟特征预处理展示
+
+      // 阶段 3: AI 生成调用
+      setGenerationStep(3);
+      const config = getBuiltinConfig();
 
       const params = {
         storeName: selectedStore?.name || '',
@@ -295,19 +268,33 @@ export default function HomeScreen({ navigation }) {
         wordCount: wordCount,
         images: images.map(img => img.base64),
         style: getEffectiveStyle(),
+        rating: rating,
+        tags: selectedTags,
       };
 
       const result = await generateReview(params, config);
       
-      // 追加到历史记录的最前面
-      setReviewHistory(prev => [{
+      // 成功触觉反馈
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+      const newCard = {
         id: Date.now().toString(),
         text: result,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        store: selectedStore?.name || '未知商铺'
-      }, ...prev]);
+        store: selectedStore?.name || '自由探店',
+        rating: rating,
+        tags: selectedTags
+      };
+
+      // 追加到历史记录的最前面，并存盘
+      setReviewHistory(prev => {
+        const updated = [newCard, ...prev].slice(0, 30); // 限制最多30条历史
+        AsyncStorage.setItem('@review_history', JSON.stringify(updated)).catch(e => console.error(e));
+        return updated;
+      });
 
     } catch (e) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       // 特殊处理内置 AI 的限速报错
       if (e.message && e.message.includes('hawk_error')) {
         try {
@@ -321,20 +308,60 @@ export default function HomeScreen({ navigation }) {
       }
     } finally {
       setGenerating(false);
+      setGenerationStep(0);
     }
   };
 
-  const copyToClipboard = async (text) => {
-    await Clipboard.setStringAsync(text);
-    Alert.alert('成功', '点评已复制到剪贴板！');
+  const copyAndOpenDianping = async (text) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      
+      Alert.alert(
+        '复制成功 📋',
+        '点评内容已复制到剪贴板！是否立即打开大众点评 App 粘贴发布？',
+        [
+          { text: '取消', style: 'cancel' },
+          { 
+            text: '打开点评', 
+            style: 'default',
+            onPress: async () => {
+              const dpUrl = 'dianping://home';
+              try {
+                const canOpen = await Linking.canOpenURL(dpUrl);
+                if (canOpen) {
+                  await Linking.openURL(dpUrl);
+                } else {
+                  // 尝试备用 scheme
+                  const fallbackUrl = 'dianping://';
+                  const canOpenFallback = await Linking.canOpenURL(fallbackUrl);
+                  if (canOpenFallback) {
+                    await Linking.openURL(fallbackUrl);
+                  } else {
+                    Alert.alert('提示', '未能拉起大众点评，请确认是否安装该 App，或手动打开发布。');
+                  }
+                }
+              } catch (_) {
+                Alert.alert('提示', '未能拉起大众点评，请手动打开发布。');
+              }
+            }
+          }
+        ]
+      );
+    } catch (e) {
+      Alert.alert('错误', '复制失败: ' + e.message);
+    }
   };
 
   const handleResetInputs = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     setImages([]);
     setSelectedStore(null);
     setUserReview('');
     setSelectedStyleIndex(0);
     setWordCount('200');
+    setRating(5);
+    setSelectedTags([]);
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
@@ -347,37 +374,58 @@ export default function HomeScreen({ navigation }) {
     return REVIEW_STYLES[selectedStyleIndex];
   };
 
-  // 配置右上角设置按钮
+  // 配置右上角 (隐藏设置按钮)
   useEffect(() => {
     navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={{ marginRight: theme.spacing.md }}>
-          <Ionicons name="settings-outline" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
-      ),
+      headerRight: null,
     });
   }, [navigation]);
 
   return (
     <ScrollView ref={scrollViewRef} style={styles.container}>
       
+      {/* 品牌标识 */}
+      <View style={styles.brandHeader} accessibilityRole="header">
+        <Image
+          source={require('../assets/hawk.png')}
+          style={styles.brandLogo}
+          resizeMode="contain"
+          accessibilityElementsHidden={true}
+        />
+        <Text style={styles.brandText}>HAWK</Text>
+        <Text style={styles.brandSub}>AI RATING GEN</Text>
+      </View>
+
       {/* 顶部标题 */}
       <Text style={styles.screenTitle}>准备新点评 ✍️</Text>
 
       {/* 1. 照片上传区 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>上传图片 (最高9张)</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>上传图片 (最高9张)</Text>
+          <Text style={styles.sectionCount}>{images.length}/9</Text>
+        </View>
         <View style={styles.imageGrid}>
           {images.map((img, index) => (
             <View key={index} style={styles.imageContainer}>
-              <Image source={{ uri: img.uri }} style={styles.image} />
-              <TouchableOpacity style={styles.deleteBtn} onPress={() => removeImage(index)}>
-                <Ionicons name="close-circle" size={20} color={theme.colors.error} />
+              <Image source={{ uri: img.uri }} style={styles.image} accessibilityLabel={`已选择图片 ${index + 1}`} />
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => removeImage(index)}
+                accessibilityLabel="删除图片"
+                accessibilityRole="button"
+              >
+                <Ionicons name="close-circle" size={22} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
           ))}
           {images.length < 9 && (
-            <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
+            <TouchableOpacity
+              style={styles.addImageBtn}
+              onPress={pickImage}
+              accessibilityLabel="添加图片"
+              accessibilityRole="button"
+            >
               <Ionicons name="add" size={32} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           )}
@@ -387,7 +435,13 @@ export default function HomeScreen({ navigation }) {
       {/* 2. 商店名称 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>商店名称</Text>
-        <TouchableOpacity style={styles.storeSelector} onPress={openStoreModal}>
+        <TouchableOpacity
+          style={styles.storeSelector}
+          onPress={openStoreModal}
+          accessibilityLabel="选择商铺"
+          accessibilityRole="button"
+          accessibilityHint={selectedStore ? `已选择: ${selectedStore.name}` : "点击搜索附近商铺"}
+        >
           <Text style={selectedStore ? styles.storeText : styles.storePlaceholder}>
             {selectedStore ? selectedStore.name : '点击选择或搜索商铺'}
           </Text>
@@ -401,6 +455,9 @@ export default function HomeScreen({ navigation }) {
         <TouchableOpacity
           style={styles.styleSelector}
           onPress={() => setStyleModalVisible(true)}
+          accessibilityLabel="选择点评风格"
+          accessibilityRole="button"
+          accessibilityHint={`当前风格: ${REVIEW_STYLES[selectedStyleIndex].name}`}
         >
           <Text style={styles.styleSelectorText}>
             {REVIEW_STYLES[selectedStyleIndex].name}
@@ -416,10 +473,12 @@ export default function HomeScreen({ navigation }) {
           style={styles.textArea}
           multiline
           numberOfLines={4}
-          placeholder="有什么特别想夸或吐槽的？比如：服务太棒了、菜品很新鲜...（可留空）"
+          placeholder="有什么特别想夸或吐槽的？比如：服务太棒了、菜品很新鲜…（可留空）"
           placeholderTextColor={theme.colors.textSecondary}
           value={userReview}
           onChangeText={setUserReview}
+          autoCorrect={false}
+          accessibilityLabel="输入您的简单感受"
         />
       </View>
 
@@ -432,49 +491,157 @@ export default function HomeScreen({ navigation }) {
           placeholderTextColor={theme.colors.textSecondary}
           value={wordCount}
           onChangeText={setWordCount}
+          keyboardType="numeric"
+          autoCorrect={false}
+          returnKeyType="done"
+          accessibilityLabel="设置生成字数"
         />
       </View>
 
-      {/* 6. 模型选择 Chip (新增) */}
+      {/* 6. 总体评分 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>使用模型</Text>
-        <TouchableOpacity 
-          style={styles.modelChip} 
-          onPress={() => {
-            loadActiveConfig();
-            setShowModelPicker(true);
-          }}
-        >
-          <View style={styles.modelChipLeft}>
-            <Text style={styles.modelChipEmoji}>
-              {availableConfigs.find(c => c.id === activeConfig.providerId)?.emoji || '🤖'}
-            </Text>
-            <View>
-              <Text style={styles.modelChipName}>
-                {availableConfigs.find(c => c.id === activeConfig.providerId)?.name || activeConfig.providerId}
-              </Text>
-              <Text style={styles.modelChipSub}>{activeConfig.model}</Text>
-            </View>
-          </View>
-          <Ionicons name="swap-horizontal" size={16} color={theme.colors.primary} />
-        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>总体评分</Text>
+        <View style={styles.starsContainer}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <TouchableOpacity
+              key={star}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setRating(star);
+              }}
+              style={styles.starTouch}
+              accessibilityLabel={`打分 ${star} 星`}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name={star <= rating ? "star" : "star-outline"}
+                size={32}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          ))}
+          <Text style={styles.ratingText}>
+            {rating === 5 && '🔥 超出预期'}
+            {rating === 4 && '✨ 值得推荐'}
+            {rating === 3 && '⚖️ 中规中矩'}
+            {rating === 2 && '⚠️ 体验一般'}
+            {rating === 1 && '💔 极其避雷'}
+          </Text>
+        </View>
+      </View>
+
+      {/* 7. 体验关键词 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>体验关键词 (多选)</Text>
+        <View style={styles.tagsContainer}>
+          {PRESET_TAGS.map((tag) => {
+            const isSelected = selectedTags.includes(tag);
+            return (
+              <TouchableOpacity
+                key={tag}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  if (isSelected) {
+                    setSelectedTags(prev => prev.filter(t => t !== tag));
+                  } else {
+                    setSelectedTags(prev => [...prev, tag]);
+                  }
+                }}
+                style={[
+                  styles.tagChip,
+                  isSelected && styles.tagChipActive
+                ]}
+                accessibilityLabel={`选择标签: ${tag}`}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: isSelected }}
+              >
+                <Text style={[
+                  styles.tagChipText,
+                  isSelected && styles.tagChipTextActive
+                ]}>
+                  {tag}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {/* 界面错误提示 */}
       {globalError ? (
-        <View style={styles.errorBox}>
+        <View style={styles.errorBox} accessibilityRole="alert">
           <Text style={styles.errorText}>{globalError}</Text>
         </View>
       ) : null}
+
+      {/* 生成进度步骤条 */}
+      {generating && (
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressTitle}>🦅 Hawk AI 点评生成进度</Text>
+          
+          {images.length > 0 && (
+            <View style={styles.progressStepRow}>
+              <Ionicons
+                name={generationStep > 1 ? "checkmark-circle" : (generationStep === 1 ? "time-outline" : "ellipse-outline")}
+                size={18}
+                color={generationStep > 1 ? theme.colors.success : (generationStep === 1 ? theme.colors.primary : theme.colors.textTertiary)}
+              />
+              <Text style={[
+                styles.progressStepText,
+                generationStep === 1 && styles.progressStepActiveText,
+                generationStep > 1 && styles.progressStepCompletedText
+              ]}>
+                1. 正在压缩优化多模态探店图片...
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.progressStepRow}>
+            <Ionicons
+              name={generationStep > 2 ? "checkmark-circle" : (generationStep === 2 ? "time-outline" : "ellipse-outline")}
+              size={18}
+              color={generationStep > 2 ? theme.colors.success : (generationStep === 2 ? theme.colors.primary : theme.colors.textTertiary)}
+            />
+            <Text style={[
+              styles.progressStepText,
+              generationStep === 2 && styles.progressStepActiveText,
+              generationStep > 2 && styles.progressStepCompletedText
+            ]}>
+              {images.length > 0 ? '2' : '1'}. 正在分析商铺定位与标签特征...
+            </Text>
+          </View>
+
+          <View style={styles.progressStepRow}>
+            <Ionicons
+              name={generationStep > 3 ? "checkmark-circle" : (generationStep === 3 ? "time-outline" : "ellipse-outline")}
+              size={18}
+              color={generationStep > 3 ? theme.colors.success : (generationStep === 3 ? theme.colors.primary : theme.colors.textTertiary)}
+            />
+            <Text style={[
+              styles.progressStepText,
+              generationStep === 3 && styles.progressStepActiveText,
+              generationStep > 3 && styles.progressStepCompletedText
+            ]}>
+              {images.length > 0 ? '3' : '2'}. 正在调用 HAWK AI 生成与排版评价...
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* 生成按钮 */}
       <TouchableOpacity 
         style={[styles.generateBtn, generating && styles.generateBtnDisabled]} 
         onPress={handleGenerate}
         disabled={generating}
+        accessibilityLabel={generating ? "正在生成点评" : "一键生成点评"}
+        accessibilityRole="button"
+        accessibilityState={{ busy: generating }}
       >
         {generating ? (
-          <ActivityIndicator color="#000" size="small" />
+          <View style={styles.generatingContainer}>
+            <ActivityIndicator color="#000" size="small" />
+            <Text style={styles.generatingText}>AI 思考中…</Text>
+          </View>
         ) : (
           <Text style={styles.generateBtnText}>一键生成点评 🦅</Text>
         )}
@@ -482,23 +649,53 @@ export default function HomeScreen({ navigation }) {
 
       {/* 结果展示 (多卡片流) */}
       {reviewHistory.length > 0 && (
-        <View style={styles.resultSection}>
+        <View style={styles.resultSection} accessibilityLiveRegion="polite">
           <Text style={styles.sectionTitle}>生成记录</Text>
           {reviewHistory.map((item) => (
             <View key={item.id} style={styles.resultCard}>
               <View style={styles.resultCardHeader}>
-                <Text style={styles.resultTime}>{item.timestamp} · {item.store}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.resultTime}>{item.timestamp} · {item.store}</Text>
+                  <View style={styles.cardHeaderMeta}>
+                    {item.rating && (
+                      <Text style={styles.cardRating}>
+                        {'⭐'.repeat(item.rating)}
+                      </Text>
+                    )}
+                    <Text style={styles.hawkBadge}>HAWK AI 精选生成</Text>
+                  </View>
+                </View>
+                <Ionicons name="flash" size={16} color={theme.colors.primary} accessibilityElementsHidden={true} />
               </View>
+              {item.tags && item.tags.length > 0 && (
+                <View style={styles.cardTagsRow}>
+                  {item.tags.map(t => (
+                    <View key={t} style={styles.cardTag}>
+                      <Text style={styles.cardTagText}>{t}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               <Text style={styles.resultText}>{item.text}</Text>
-              <TouchableOpacity style={styles.copyBtn} onPress={() => copyToClipboard(item.text)}>
-                <Ionicons name="copy-outline" size={18} color="#000" />
-                <Text style={styles.copyBtnText}>复制内容</Text>
+              <TouchableOpacity
+                style={styles.copyBtn}
+                onPress={() => copyAndOpenDianping(item.text)}
+                accessibilityLabel="复制并打开点评"
+                accessibilityRole="button"
+              >
+                <Ionicons name="copy-outline" size={18} color="#1A1200" accessibilityElementsHidden={true} />
+                <Text style={styles.copyBtnText}>复制并打开大众点评</Text>
               </TouchableOpacity>
             </View>
           ))}
           {/* 再写一条点评 */}
-          <TouchableOpacity style={styles.rewriteBtn} onPress={handleResetInputs}>
-            <Ionicons name="refresh-outline" size={18} color={theme.colors.primary} />
+          <TouchableOpacity
+            style={styles.rewriteBtn}
+            onPress={handleResetInputs}
+            accessibilityLabel="清空输入并重新编写"
+            accessibilityRole="button"
+          >
+            <Ionicons name="refresh-outline" size={18} color={theme.colors.primary} accessibilityElementsHidden={true} />
             <Text style={styles.rewriteBtnText}>🔄 再写一条点评</Text>
           </TouchableOpacity>
         </View>
@@ -506,63 +703,20 @@ export default function HomeScreen({ navigation }) {
 
       <View style={{ height: 40 }} />
 
-      {/* 模型选择 Modal (新增) */}
-      <Modal visible={showModelPicker} animationType="fade" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '60%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>快速切换模型</Text>
-              <TouchableOpacity onPress={() => setShowModelPicker(false)}>
-                <Ionicons name="close" size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={availableConfigs}
-              keyExtractor={item => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.modelPickerProvider}>
-                  <Text style={styles.modelPickerProviderName}>{item.emoji} {item.name}</Text>
-                  {item.models && item.models.map(m => {
-                    const isSelected = activeConfig.providerId === item.id && activeConfig.model === m;
-                    return (
-                      <TouchableOpacity 
-                        key={m} 
-                        style={[styles.modelPickerItem, isSelected && styles.modelPickerItemSelected]}
-                        onPress={async () => {
-                          const newActive = { providerId: item.id, model: m };
-                          setActiveConfig(newActive);
-                          await AsyncStorage.setItem('@active_config', JSON.stringify(newActive));
-                          setShowModelPicker(false);
-                        }}
-                      >
-                        <Text style={[styles.modelPickerText, isSelected && styles.modelPickerTextSelected]}>{m}</Text>
-                        {isSelected && <Ionicons name="checkmark" size={18} color={theme.colors.primary} />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            />
-            <TouchableOpacity 
-              style={styles.manageBtn}
-              onPress={() => {
-                setShowModelPicker(false);
-                navigation.navigate('Settings');
-              }}
-            >
-              <Text style={styles.manageBtnText}>管理提供商配置</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+
 
       {/* 版本更新 Modal (新增) */}
-      <Modal visible={showUpdateModal} animationType="fade" transparent={true}>
+      <Modal visible={showUpdateModal} animationType="fade" transparent={true} accessibilityViewIsModal={true}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { height: 'auto', paddingBottom: 30 }]}>
+          <View style={[styles.modalContent, { height: 'auto', paddingBottom: theme.spacing.xl }]}>
+            <View style={styles.modalDragIndicator} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>发现新版本 ✨</Text>
-              <TouchableOpacity onPress={() => setShowUpdateModal(false)}>
+              <TouchableOpacity
+                onPress={() => setShowUpdateModal(false)}
+                accessibilityLabel="关闭更新提示"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
@@ -570,7 +724,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={{ color: theme.colors.primary, fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
                 {updateInfo?.tag_name}
               </Text>
-              <Text style={{ color: theme.colors.text, lineHeight: 20, marginBottom: 20 }}>
+              <Text style={{ color: theme.colors.text, lineHeight: 22, marginBottom: 24 }}>
                 {updateInfo?.body || '由于版本迭代，建议您立即更新以获得最佳体验。'}
               </Text>
               
@@ -581,6 +735,8 @@ export default function HomeScreen({ navigation }) {
                   import('react-native').then(({ Linking }) => Linking.openURL(url));
                   setShowUpdateModal(false);
                 }}
+                accessibilityLabel="前往下载新版本"
+                accessibilityRole="button"
               >
                 <Text style={styles.generateBtnText}>立即去下载</Text>
               </TouchableOpacity>
@@ -590,12 +746,17 @@ export default function HomeScreen({ navigation }) {
       </Modal>
 
       {/* 风格选择 Modal */}
-      <Modal visible={styleModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={styleModalVisible} animationType="slide" transparent={true} accessibilityViewIsModal={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            <View style={styles.modalDragIndicator} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>选择点评风格</Text>
-              <TouchableOpacity onPress={() => setStyleModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setStyleModalVisible(false)}
+                accessibilityLabel="关闭弹窗"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
@@ -618,6 +779,9 @@ export default function HomeScreen({ navigation }) {
                     }
                     setStyleModalVisible(false);
                   }}
+                  accessibilityLabel={item.name}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: index === selectedStyleIndex }}
                 >
                   <Text style={[
                     styles.styleItemText,
@@ -634,12 +798,17 @@ export default function HomeScreen({ navigation }) {
       </Modal>
 
       {/* 商铺选择 Modal */}
-      <Modal visible={storeModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={storeModalVisible} animationType="slide" transparent={true} accessibilityViewIsModal={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            <View style={styles.modalDragIndicator} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>选择商铺</Text>
-              <TouchableOpacity onPress={() => setStoreModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setStoreModalVisible(false)}
+                accessibilityLabel="关闭弹窗"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
@@ -647,10 +816,12 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.searchRow}>
               <TextInput 
                 style={styles.searchInput}
-                placeholder="搜索附近商铺 (支持模糊联想)..."
+                placeholder="搜索附近商铺 (支持模糊联想)…"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={storeSearchQuery}
                 onChangeText={handleFuzzySearch}
+                autoCorrect={false}
+                accessibilityLabel="搜索商铺名称"
               />
             </View>
 
@@ -661,10 +832,16 @@ export default function HomeScreen({ navigation }) {
                 data={poiList}
                 keyExtractor={item => item.id}
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.poiItem} onPress={() => {
-                    setSelectedStore(item);
-                    setStoreModalVisible(false);
-                  }}>
+                  <TouchableOpacity
+                    style={styles.poiItem}
+                    onPress={() => {
+                      setSelectedStore(item);
+                      setStoreModalVisible(false);
+                    }}
+                    accessibilityLabel={item.name}
+                    accessibilityRole="button"
+                    accessibilityHint={item.address || item.type}
+                  >
                     <Text style={styles.poiName}>{item.name}</Text>
                     <Text style={styles.poiAddress}>{item.address || item.type}</Text>
                   </TouchableOpacity>
@@ -683,56 +860,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  brandHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  brandLogo: {
+    width: 60,
+    height: 60,
+    marginBottom: theme.spacing.sm,
+  },
+  brandText: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: theme.colors.primary,
+    letterSpacing: 8,
+  },
+  brandSub: {
+    fontSize: 11,
+    color: theme.colors.textTertiary,
+    letterSpacing: 4,
+    marginTop: 4,
+    fontWeight: 'bold',
   },
   screenTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  styleSelector: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.sm,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  styleSelectorText: {
-    color: theme.colors.text,
-    fontSize: 16,
-    flex: 1,
-  },
-  styleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  styleItemActive: {
-    backgroundColor: 'rgba(255, 179, 0, 0.1)',
-  },
-  styleItemText: {
-    color: theme.colors.text,
-    fontSize: 16,
-    flex: 1,
-  },
-  styleItemTextActive: {
-    color: theme.colors.primary,
-    fontWeight: 'bold',
-  },
   section: {
     marginBottom: theme.spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
   },
   sectionTitle: {
     color: theme.colors.text,
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: theme.spacing.sm,
+  },
+  sectionCount: {
+    color: theme.colors.textTertiary,
+    fontSize: 12,
   },
   imageGrid: {
     flexDirection: 'row',
@@ -742,7 +922,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: 80,
     height: 80,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: theme.borderRadius.md,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -752,19 +932,19 @@ const styles = StyleSheet.create({
   },
   deleteBtn: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 12,
+    padding: 2,
   },
   addImageBtn: {
     width: 80,
     height: 80,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -788,15 +968,31 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flex: 1,
   },
+  styleSelector: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  styleSelectorText: {
+    color: theme.colors.text,
+    fontSize: 16,
+    flex: 1,
+  },
   textArea: {
     backgroundColor: theme.colors.surface,
     color: theme.colors.text,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
-    padding: theme.spacing.sm,
-    height: 100,
+    padding: theme.spacing.md,
+    height: 110,
     textAlignVertical: 'top',
+    fontSize: 15,
   },
   input: {
     backgroundColor: theme.colors.surface,
@@ -805,46 +1001,71 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
     padding: theme.spacing.md,
+    fontSize: 15,
   },
   generateBtn: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
+    height: 52,
     borderRadius: theme.borderRadius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.xl,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   generateBtnDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   generateBtnText: {
-    color: '#000000', // Deep black for contrast with Amber/Gold
-    fontSize: 18,
+    color: '#000000',
+    fontSize: 17,
     fontWeight: 'bold',
+  },
+  generatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  generatingText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
   resultSection: {
     marginBottom: theme.spacing.xl,
   },
   resultCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceElevated,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     marginBottom: theme.spacing.md,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   resultCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.background,
+    borderBottomColor: theme.colors.border,
+  },
+  hawkBadge: {
+    fontSize: 10,
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginTop: 2,
   },
   resultTime: {
     fontSize: 12,
@@ -854,20 +1075,38 @@ const styles = StyleSheet.create({
   resultText: {
     color: theme.colors.text,
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   copyBtn: {
     backgroundColor: theme.colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.sm,
+    padding: theme.spacing.md,
     borderRadius: theme.borderRadius.sm,
     marginTop: theme.spacing.md,
   },
   copyBtnText: {
-    color: '#000',
+    color: '#1A1200',
     fontWeight: 'bold',
+    fontSize: 15,
+    marginLeft: theme.spacing.sm,
+  },
+  rewriteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primarySubtle,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  rewriteBtnText: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
     marginLeft: theme.spacing.sm,
   },
   errorBox: {
@@ -884,15 +1123,23 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surfaceElevated,
     borderTopLeftRadius: theme.borderRadius.lg,
     borderTopRightRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
-    height: '70%',
+    maxHeight: '85%',
+  },
+  modalDragIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: theme.colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -903,6 +1150,26 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: theme.colors.text,
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  styleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  styleItemActive: {
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+  },
+  styleItemText: {
+    color: theme.colors.text,
+    fontSize: 16,
+    flex: 1,
+  },
+  styleItemTextActive: {
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
   searchRow: {
@@ -916,14 +1183,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
-    padding: theme.spacing.sm,
-    marginRight: theme.spacing.sm,
-  },
-  searchBtn: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-    justifyContent: 'center',
+    padding: theme.spacing.md,
+    fontSize: 15,
   },
   poiItem: {
     padding: theme.spacing.md,
@@ -940,93 +1201,104 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: theme.spacing.xs,
   },
-  rewriteBtn: {
+  starsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 179, 0, 0.1)',
+    marginTop: theme.spacing.sm,
+  },
+  starTouch: {
+    paddingRight: theme.spacing.xs,
+  },
+  ratingText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    marginLeft: theme.spacing.sm,
+    fontWeight: 'bold',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: theme.spacing.sm,
+  },
+  tagChip: {
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  tagChipActive: {
     borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySubtle,
+  },
+  tagChipText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+  },
+  tagChipTextActive: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  progressContainer: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.sm,
-  },
-  rewriteBtnText: {
-    color: theme.colors.primary,
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginLeft: theme.spacing.sm,
-  },
-  // ========== 新增：模型选择器样式 ==========
-  modelChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  modelChipLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modelChipEmoji: {
-    fontSize: 24,
-    marginRight: theme.spacing.sm,
-  },
-  modelChipName: {
-    color: theme.colors.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  modelChipSub: {
-    color: theme.colors.textSecondary,
-    fontSize: 11,
-  },
-  modelPickerProvider: {
     marginBottom: theme.spacing.md,
   },
-  modelPickerProviderName: {
-    color: theme.colors.textSecondary,
-    fontSize: 12,
+  progressTitle: {
+    color: theme.colors.primary,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: theme.spacing.xs,
-    paddingLeft: 4,
+    marginBottom: theme.spacing.sm,
   },
-  modelPickerItem: {
+  progressStepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: theme.borderRadius.sm,
-    marginBottom: 2,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    marginVertical: 4,
   },
-  modelPickerItemSelected: {
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    borderColor: theme.colors.primary,
-    borderWidth: 1,
+  progressStepText: {
+    color: theme.colors.textTertiary,
+    fontSize: 13,
+    marginLeft: theme.spacing.sm,
   },
-  modelPickerText: {
-    color: theme.colors.text,
-    fontSize: 14,
-  },
-  modelPickerTextSelected: {
+  progressStepActiveText: {
     color: theme.colors.primary,
     fontWeight: 'bold',
   },
-  manageBtn: {
-    marginTop: theme.spacing.md,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+  progressStepCompletedText: {
+    color: theme.colors.success,
   },
-  manageBtnText: {
+  cardHeaderMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: theme.spacing.sm,
+  },
+  cardRating: {
+    fontSize: 12,
+  },
+  cardTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginVertical: theme.spacing.sm,
+  },
+  cardTag: {
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  cardTagText: {
     color: theme.colors.primary,
+    fontSize: 10,
     fontWeight: 'bold',
   },
 });

@@ -55,14 +55,18 @@ export default function SettingsScreen({ navigation }) {
       >
         <Text style={styles.sectionTitle}>当前活跃</Text>
         {activeConfig && (
-          <View style={styles.activeCard}>
+          <View
+            style={styles.activeCard}
+            accessibilityLabel={`当前活跃模型: ${activeConfig.model}, 提供商: ${activeConfig.providerId}`}
+            accessibilityRole="summary"
+          >
             <View style={styles.activeInfo}>
               <Text style={styles.activeLabel}>
                 {PROVIDER_PRESETS.find(p => p.id === activeConfig.providerId)?.emoji || '🤖'} {activeConfig.providerId}
               </Text>
               <Text style={styles.activeModel}>{activeConfig.model}</Text>
             </View>
-            <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />
+            <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} accessibilityElementsHidden={true} />
           </View>
         )}
 
@@ -76,9 +80,12 @@ export default function SettingsScreen({ navigation }) {
               key={preset.id} 
               style={[styles.providerItem, isActive && styles.activeProviderItem]}
               onPress={() => navigation.navigate('ProviderDetail', { providerTemplate: preset })}
+              accessibilityLabel={`${preset.name}, ${preset.note}`}
+              accessibilityRole="button"
+              accessibilityHint={`点击配置或选择 ${preset.name}`}
             >
               <View style={styles.providerLeft}>
-                <Text style={styles.providerEmoji}>{preset.emoji}</Text>
+                <Text style={styles.providerEmoji} accessibilityElementsHidden={true}>{preset.emoji}</Text>
                 <View>
                   <Text style={styles.providerName}>{preset.name}</Text>
                   <Text style={styles.providerNote} numberOfLines={1}>{preset.note}</Text>
@@ -86,9 +93,15 @@ export default function SettingsScreen({ navigation }) {
               </View>
               
               <View style={styles.providerRight}>
-                {status === 'configured' && <View style={styles.statusDot} />}
+                {status === 'configured' && (
+                  <View
+                    style={styles.statusDot}
+                    accessibilityLabel="已配置"
+                    accessibilityRole="image"
+                  />
+                )}
                 {status === 'built-in' && <Text style={styles.builtinTag}>内置</Text>}
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} accessibilityElementsHidden={true} />
               </View>
             </TouchableOpacity>
           );
@@ -102,9 +115,17 @@ export default function SettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   scrollView: { padding: theme.spacing.md },
-  sectionTitle: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: theme.spacing.sm, marginTop: theme.spacing.md, letterSpacing: 1 },
+  sectionTitle: {
+    color: theme.colors.textTertiary,
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    letterSpacing: 2,
+    textTransform: 'uppercase'
+  },
   activeCard: {
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    backgroundColor: theme.colors.primarySubtle,
     borderWidth: 1,
     borderColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
@@ -114,8 +135,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   activeInfo: { flex: 1 },
-  activeLabel: { color: theme.colors.primary, fontSize: 14, fontWeight: 'bold' },
-  activeModel: { color: theme.colors.text, fontSize: 12, marginTop: 4 },
+  activeLabel: { color: theme.colors.primary, fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
+  activeModel: { color: theme.colors.text, fontSize: 12, marginTop: 4, opacity: 0.9 },
   providerItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,16 +144,34 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md, // Increased spacing between items
     borderWidth: 1,
     borderColor: theme.colors.border
   },
-  activeProviderItem: { borderColor: theme.colors.primary },
+  activeProviderItem: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(212, 175, 55, 0.03)'
+  },
   providerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   providerEmoji: { fontSize: 24, marginRight: theme.spacing.sm },
-  providerName: { color: theme.colors.text, fontSize: 16, fontWeight: '500' },
-  providerNote: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
+  providerName: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },
+  providerNote: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 },
   providerRight: { flexDirection: 'row', alignItems: 'center' },
-  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50', marginRight: 8 },
-  builtinTag: { backgroundColor: theme.colors.border, color: theme.colors.textSecondary, fontSize: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 8 }
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
+    marginRight: 8
+  },
+  builtinTag: {
+    backgroundColor: theme.colors.surfaceHover,
+    color: theme.colors.primary,
+    fontSize: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
+    fontWeight: 'bold'
+  }
 });

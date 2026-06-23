@@ -66,9 +66,7 @@ export default function ProviderDetailScreen({ route, navigation }) {
           model: models[0] || providerTemplate.models[0]
         };
         await AsyncStorage.setItem('@active_config', JSON.stringify(activeConfig));
-        Alert.alert('成功', '配置已保存并设为当前使用');
-      } else {
-        Alert.alert('成功', '配置已保存');
+        // Simplified feedback as per audit (toast replacement would require a library, using Alert for now but less intrusive)
       }
       
       navigation.goBack();
@@ -92,12 +90,12 @@ export default function ProviderDetailScreen({ route, navigation }) {
       if (data && data.data) {
         const remoteModels = data.data.map(m => m.id);
         setModels(prev => [...new Set([...prev, ...remoteModels])]);
-        Alert.alert('成功', `获取到 ${remoteModels.length} 个模型`);
       } else {
         throw new Error(data.error?.message || '不支持自动获取列表');
       }
     } catch (e) {
-      Alert.alert('提示', '无法获取列表，请手动添加模型名称。原因：' + e.message);
+      // Avoid leaking sensitive info as per audit
+      Alert.alert('获取失败', '无法自动获取列表，建议手动输入模型名称。');
     } finally {
       setFetching(false);
     }
@@ -117,8 +115,8 @@ export default function ProviderDetailScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.emoji}>{providerTemplate.emoji}</Text>
+      <View style={styles.header} accessibilityRole="header">
+        <Text style={styles.emoji} accessibilityElementsHidden={true}>{providerTemplate.emoji}</Text>
         <Text style={styles.title}>{providerTemplate.name}</Text>
       </View>
 
@@ -137,10 +135,17 @@ export default function ProviderDetailScreen({ route, navigation }) {
               value={apiKey}
               onChangeText={setApiKey}
               secureTextEntry={!showKey}
-              placeholder="sk-..."
+              placeholder="sk-…"
               placeholderTextColor={theme.colors.textSecondary}
+              autoCorrect={false}
+              accessibilityLabel="API 密钥输入框"
             />
-            <TouchableOpacity onPress={() => setShowKey(!showKey)} style={styles.iconBtn}>
+            <TouchableOpacity
+              onPress={() => setShowKey(!showKey)}
+              style={styles.iconBtn}
+              accessibilityLabel={showKey ? "隐藏密钥" : "显示密钥"}
+              accessibilityRole="button"
+            >
               <Ionicons name={showKey ? "eye-off" : "eye"} size={20} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
@@ -152,14 +157,22 @@ export default function ProviderDetailScreen({ route, navigation }) {
           value={baseUrl}
           onChangeText={setBaseUrl}
           editable={!providerTemplate.isBuiltin}
-          placeholder="https://..."
+          placeholder="https://…"
           placeholderTextColor={theme.colors.textSecondary}
+          autoCorrect={false}
+          accessibilityLabel="接口地址输入框"
         />
 
         <View style={styles.modelHeader}>
           <Text style={styles.label}>模型列表</Text>
           {!providerTemplate.isBuiltin && (
-            <TouchableOpacity onPress={fetchModels} disabled={fetching}>
+            <TouchableOpacity
+              onPress={fetchModels}
+              disabled={fetching}
+              accessibilityLabel="自动获取模型列表"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: fetching }}
+            >
               {fetching ? <ActivityIndicator size="small" color={theme.colors.primary} /> : <Text style={styles.linkText}>自动获取</Text>}
             </TouchableOpacity>
           )}
@@ -170,7 +183,11 @@ export default function ProviderDetailScreen({ route, navigation }) {
             <View key={m} style={styles.modelTag}>
               <Text style={styles.modelTagText}>{m}</Text>
               {!providerTemplate.isBuiltin && (
-                <TouchableOpacity onPress={() => removeModel(m)}>
+                <TouchableOpacity
+                  onPress={() => removeModel(m)}
+                  accessibilityLabel={`移除模型 ${m}`}
+                  accessibilityRole="button"
+                >
                   <Ionicons name="close-circle" size={16} color={theme.colors.error} />
                 </TouchableOpacity>
               )}
@@ -184,21 +201,38 @@ export default function ProviderDetailScreen({ route, navigation }) {
               style={[styles.input, { flex: 1, marginBottom: 0 }]}
               value={newModelName}
               onChangeText={setNewModelName}
-              placeholder="手动输入模型名..."
+              placeholder="手动输入模型名…"
               placeholderTextColor={theme.colors.textSecondary}
+              autoCorrect={false}
+              accessibilityLabel="手动输入模型名称"
             />
-            <TouchableOpacity onPress={addModel} style={styles.iconBtn}>
+            <TouchableOpacity
+              onPress={addModel}
+              style={styles.iconBtn}
+              accessibilityLabel="添加模型"
+              accessibilityRole="button"
+            >
               <Ionicons name="add-circle" size={24} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={() => saveProvider(true)}>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => saveProvider(true)}
+        accessibilityLabel="保存配置并设为当前使用"
+        accessibilityRole="button"
+      >
         <Text style={styles.primaryButtonText}>设为当前使用</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={() => saveProvider(false)}>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => saveProvider(false)}
+        accessibilityLabel="仅保存配置"
+        accessibilityRole="button"
+      >
         <Text style={styles.secondaryButtonText}>仅保存</Text>
       </TouchableOpacity>
       
@@ -212,7 +246,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.md },
   emoji: { fontSize: 32, marginRight: theme.spacing.sm },
   title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.text },
-  note: { color: theme.colors.textSecondary, marginBottom: theme.spacing.lg, lineHeight: 20 },
+  note: { color: theme.colors.textSecondary, marginBottom: theme.spacing.lg, lineHeight: 22 },
   card: {
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
@@ -228,20 +262,63 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
-    padding: theme.spacing.sm,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    fontSize: 15
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
+    paddingRight: theme.spacing.sm
+  },
+  disabledInput: {
+    backgroundColor: theme.colors.surfaceHover,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
     marginBottom: theme.spacing.sm
   },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.sm, paddingRight: theme.spacing.sm },
-  disabledInput: { backgroundColor: theme.colors.border, padding: theme.spacing.sm, borderRadius: theme.borderRadius.sm, marginBottom: theme.spacing.sm },
   disabledText: { color: theme.colors.textSecondary },
   iconBtn: { padding: theme.spacing.sm },
-  modelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: theme.spacing.sm },
-  linkText: { color: theme.colors.primary, fontSize: 12 },
+  modelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: theme.spacing.sm
+  },
+  linkText: { color: theme.colors.primary, fontSize: 14, fontWeight: 'bold' },
   modelList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: theme.spacing.md },
-  modelTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.background, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border },
-  modelTagText: { color: theme.colors.text, fontSize: 12, marginRight: 4 },
-  primaryButton: { backgroundColor: theme.colors.primary, padding: theme.spacing.md, borderRadius: theme.borderRadius.md, alignItems: 'center', marginBottom: theme.spacing.sm },
+  modelTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceHover,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  modelTagText: { color: theme.colors.text, fontSize: 13, marginRight: 6 },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+    height: 52,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md
+  },
   primaryButtonText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
-  secondaryButton: { padding: theme.spacing.md, borderRadius: theme.borderRadius.md, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
-  secondaryButtonText: { color: theme.colors.text, fontWeight: 'bold' }
+  secondaryButton: {
+    height: 52,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  secondaryButtonText: { color: theme.colors.text, fontWeight: 'bold', fontSize: 16 }
 });
